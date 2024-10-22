@@ -1,14 +1,20 @@
 [tool.poetry]
 name = "iiwa-batter"
 version = "0.1.0"
-description = "Making the iiwa14 hit home runs"
-authors = ["Zander Keith <zkeith@mit.edu>"]
-license = "MIT"
+description = ""
+authors = ["Your Name <you@example.com>"]
 readme = "README.md"
 packages = [{include = "iiwa_batter"}]
+package-mode = true
 
 [tool.poetry.dependencies]
 python = "^3.12"
+drake = "^1.32.0"
+manipulation = "^2024.6.29"
+ipykernel = "^6.29.5"
+nbformat = "^5.10.4"
+nbconvert = "^7.16.4"
+pydot = "^3.0.1"
 
 
 [build-system]
