@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "iiwa-batter"
+version = "0.1.0"
+description = "Making the iiwa14 hit home runs"
+authors = ["Zander Keith <zkeith@mit.edu>"]
+license = "MIT"
+readme = "README.md"
+packages = [{include = "iiwa_batter"}]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
