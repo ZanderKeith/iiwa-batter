@@ -16,6 +16,9 @@ from manipulation.utils import ConfigureParser
 
 from iiwa_batter import PACKAGE_ROOT
 
+# TODO: just had a brainwave
+# I don't need to worry about locking joints into a given position if I change the urdf to do that for me
+
 model_directive = f"""
 directives: 
 - add_model:

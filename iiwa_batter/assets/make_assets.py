@@ -2,6 +2,14 @@ from iiwa_batter import PACKAGE_ROOT
 
 INCHES_TO_METERS = 0.0254
 
+# https://en.wikipedia.org/wiki/Baseball_(ball)#:~:text=A%20regulation%20baseball%20is%209,(0.142%20to%200.149%20kg).
+ball_diameter_inches = 2.9
+ball_diameter = ball_diameter_inches * INCHES_TO_METERS
+BALL_RADIUS = ball_diameter/2
+
+BALL_MASS = 0.1455 # kg
+BALL_DRAG_COEFFICIENT = 0.3 # https://www1.grc.nasa.gov/beginners-guide-to-aeronautics/drag-on-a-baseball/
+
 def compliant_bat():
     bat_modulus = 1.2e9 / 100
 
@@ -65,12 +73,7 @@ def compliant_bat():
 def compliant_ball():
     ball_modulus = 69e6 / 100
 
-    # https://en.wikipedia.org/wiki/Baseball_(ball)#:~:text=A%20regulation%20baseball%20is%209,(0.142%20to%200.149%20kg).
-    ball_diameter_inches = 2.9
-    ball_diameter = ball_diameter_inches * INCHES_TO_METERS
-    ball_radius = ball_diameter/2
 
-    ball_mass = 0.1455
 
     resolution_hint = 0.02
 
@@ -82,7 +85,7 @@ def compliant_ball():
         <pose>0 0 0 0 0 0</pose>
         <link name="base">
           <inertial>
-            <mass>{ball_mass}</mass>
+            <mass>{BALL_MASS}</mass>
             <inertia>
               <ixx>0.016666</ixx> <ixy>0.0</ixy> <ixz>0.0</ixz>
               <iyy>0.014166</iyy> <iyz>0.0</iyz>
@@ -92,7 +95,7 @@ def compliant_ball():
           <collision name="collision">
             <geometry>
               <sphere>
-                <radius>{ball_radius}</radius>
+                <radius>{BALL_RADIUS}</radius>
               </sphere>
             </geometry>
             <drake:proximity_properties>
@@ -106,7 +109,7 @@ def compliant_ball():
           <visual name="visual">
             <geometry>
               <sphere>
-                <radius>{ball_radius}</radius>
+                <radius>{BALL_RADIUS}</radius>
               </sphere>
             </geometry>
             <material>
@@ -166,11 +169,12 @@ def tee():
     </sdf>
     """
 
-with open(f"{PACKAGE_ROOT}/assets/bat.sdf", "w") as f:
-    f.write(compliant_bat())
+if __name__ == "__main__":
+    with open(f"{PACKAGE_ROOT}/assets/bat.sdf", "w") as f:
+        f.write(compliant_bat())
 
-with open(f"{PACKAGE_ROOT}/assets/ball.sdf", "w") as f:
-    f.write(compliant_ball())
+    with open(f"{PACKAGE_ROOT}/assets/ball.sdf", "w") as f:
+        f.write(compliant_ball())
 
-with open(f"{PACKAGE_ROOT}/assets/tee.sdf", "w") as f:
-    f.write(tee())
+    with open(f"{PACKAGE_ROOT}/assets/tee.sdf", "w") as f:
+        f.write(tee())
