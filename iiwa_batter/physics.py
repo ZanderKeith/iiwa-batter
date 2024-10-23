@@ -42,12 +42,14 @@ def exit_velo_angle(initial_speed_mph, angle=45):
     distance_feet = distance * 3.28084
     return distance_feet
 
-# Example usage:
-initial_position = [0.0, 0.0, 1.0]  # 1 meter above the ground
-initial_velocity = [1.0, 1.0, 10.0]  # Initial velocity in m/s
-path = ball_flight_path(initial_position, initial_velocity)
 
-# Get maximum distance for several angles
-angles = np.linspace(30, 45, 20)
-distances = [exit_velo_angle(101, angle) for angle in angles]
-print(distances)
+if __name__ == "__main__":
+    # Example usage:
+    initial_position = [0.0, 0.0, 1.0]  # 1 meter above the ground
+    initial_velocity = [1.0, 1.0, 10.0]  # Initial velocity in m/s
+    path = ball_flight_path(initial_position, initial_velocity)
+
+    # Get maximum distance for several angles
+    angles = np.linspace(30, 45, 20)
+    distances = [exit_velo_angle(101, angle) for angle in angles]
+    print(distances)

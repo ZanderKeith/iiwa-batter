@@ -125,6 +125,7 @@ def tee():
     mesh_resolution = 0.1
     radius = 0.01
     length = 1
+    modulus = 1e9
     return f"""<?xml version="1.0"?>
     <sdf version="1.7">
       <model name="tee">
@@ -147,7 +148,7 @@ def tee():
             </geometry>
             <drake:proximity_properties>
               <drake:compliant_hydroelastic/>
-              <drake:hydroelastic_modulus>1</drake:hydroelastic_modulus>
+              <drake:hydroelastic_modulus>{modulus}</drake:hydroelastic_modulus>
               <drake:mu_dynamic>0.5</drake:mu_dynamic>
               <drake:hunt_crossley_dissipation>1.25</drake:hunt_crossley_dissipation>
               <drake:mesh_resolution_hint>{mesh_resolution}</drake:mesh_resolution_hint>
