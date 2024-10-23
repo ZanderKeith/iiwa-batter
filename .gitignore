@@ -163,3 +163,4 @@ cython_debug/
 
 # Assets that shouldn't be backed up
 *.sdf
+*.png

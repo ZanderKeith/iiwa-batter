@@ -21,7 +21,7 @@ def compliant_bat():
 
     bat_mass = 1
 
-    mesh_resolution = 0.1
+    mesh_resolution = 0.01
 
     #TODO: add inertia!
 
@@ -73,9 +73,7 @@ def compliant_bat():
 def compliant_ball():
     ball_modulus = 69e6 / 100
 
-
-
-    resolution_hint = 0.02
+    resolution_hint = 0.01
 
     #TODO: Add inertia!
 
@@ -122,7 +120,7 @@ def compliant_ball():
     """
 
 def tee():
-    mesh_resolution = 0.1
+    mesh_resolution = 0.01
     radius = 0.01
     length = 1
     modulus = 1e9
@@ -132,7 +130,7 @@ def tee():
         <pose>0 0 0 0 0 0</pose>
         <link name="base">
           <inertial>
-            <mass>0</mass>
+            <mass>1</mass>
             <inertia>
               <ixx>0.016666</ixx> <ixy>0.0</ixy> <ixz>0.0</ixz>
               <iyy>0.014166</iyy> <iyz>0.0</iyz>

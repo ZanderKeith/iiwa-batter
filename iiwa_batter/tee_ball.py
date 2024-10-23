@@ -14,9 +14,10 @@ from pydrake.all import (
 )
 
 from manipulation.station import LoadScenario, MakeHardwareStation
-from manipulation.utils import ConfigureParser
+from manipulation.utils import ConfigureParser, RenderDiagram
 
 from iiwa_batter import PACKAGE_ROOT
+from iiwa_batter.physics import parse_ball_state, exit_velo_mph
 
 # TODO: just had a brainwave
 # I don't need to worry about locking joints into a given position if I change the urdf to do that for me
@@ -82,7 +83,23 @@ def run_tee_ball(meshcat, record_time=3.0):
     driving_torque = np.array([0, 0, 40])
     station.GetInputPort("iiwa.torque").FixValue(station_context, driving_torque)
 
+    # Record velocity of the ball
+    
+    # import pydot
+    # RenderDiagram(station, max_depth=1)
+    # pydot.graph_from_dot_data(station.GetGraphvizString(max_depth=1))[0].write_png('station_render.png')
 
     meshcat.StartRecording()
-    simulator.AdvanceTo(record_time)
+    # Advance simulation for many time steps
+
+    ball_states = []
+
+    dt = 1e-2
+    for time in np.linspace(0, record_time, int(record_time/dt)):
+        simulator.AdvanceTo(time)
+        ball_state = station.GetOutputPort("ball_state").Eval(station_context)
+        ball_states.append(parse_ball_state(ball_state))
     meshcat.PublishRecording()
+
+    print(exit_velo_mph(ball_states))
+

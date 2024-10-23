@@ -32,7 +32,7 @@ def ball_flight_path(initial_position, initial_velocity, timestep=1e-2):
 
     return np.array(positions)
 
-def exit_velo_angle(initial_speed_mph, angle=45):
+def ball_distance_mph(initial_speed_mph, angle=45):
     """Just to compare with my intuition, what is the distance you get from a particular exit velocity"""
     initial_speed = initial_speed_mph * 0.44704  # convert to m/s
     initial_position = [0.0, 0.0, 1.0]  # 1 meter above the ground
@@ -42,6 +42,36 @@ def exit_velo_angle(initial_speed_mph, angle=45):
     distance_feet = distance * 3.28084
     return distance_feet
 
+def exit_velo_mph(states, range_check=0.5):
+    """Determine the ball's speed in mph after it has traveled more than range_check meters"""
+
+    # Find the first point where the ball has traveled more than range_check meters
+    initial_position = states[0][0]
+    for state in states:
+        position = state[0]
+        distance = np.linalg.norm(position - initial_position)
+        if distance > range_check:
+            break
+
+    velocity = state[1]
+    speed = np.linalg.norm(velocity)
+    speed_mph = speed * 2.23694
+
+    return speed_mph
+    
+
+def parse_ball_state(state):
+    """From the Drake ball_state output, parse the position and velocity"""
+
+    # The ball state is a 13-element vector
+    # Indices 4, 5, 6 are position
+    # Indices 10, 11, 12 are velocity
+    # TODO(ZanderKeith) if need be, go figure out what the others are
+
+    position = state[4:7]
+    velocity = state[10:13]
+
+    return position, velocity
 
 if __name__ == "__main__":
     # Example usage:
@@ -51,5 +81,5 @@ if __name__ == "__main__":
 
     # Get maximum distance for several angles
     angles = np.linspace(30, 45, 20)
-    distances = [exit_velo_angle(101, angle) for angle in angles]
+    distances = [ball_distance_mph(101, angle) for angle in angles]
     print(distances)
