@@ -25,28 +25,35 @@ from iiwa_batter.physics import parse_ball_state, exit_velo_mph
 tee_x = -0.05
 tee_y = -1.15
 
-
-
 def make_model_directive(initial_joint_positions):
 
-    if len(initial_joint_positions) == 3:
-        # Check to ensure the 
-        iiwa_directive = f"""
-- add_model:
-name: iiwa
-file: file://{PACKAGE_ROOT}/assets/iiwa14_tee_ball.urdf
-default_joint_positions:
-    iiwa_joint_1: [1.57]
-    iiwa_joint_4: [0]
-    iiwa_joint_7: [-3]
-- add_weld:
-    parent: world
-    child: iiwa::base
-"""
+#     if len(initial_joint_positions) == 3:
+#         # Check to ensure the 
+#         iiwa_directive = f"""
+# - add_model:
+# name: iiwa
+# file: file://{PACKAGE_ROOT}/assets/iiwa14_tee_ball.urdf
+# default_joint_positions:
+#     iiwa_joint_1: [{initial_joint_positions[0]}]
+#     iiwa_joint_4: [{initial_joint_positions[1]}]
+#     iiwa_joint_7: [{initial_joint_positions[2]}]
+# - add_weld:
+#     parent: world
+#     child: iiwa::base
+# """
 
     model_directive = f"""
 directives: 
-{iiwa_directive}
+- add_model:
+    name: iiwa
+    file: file://{PACKAGE_ROOT}/assets/iiwa14_tee_ball.urdf
+    default_joint_positions:
+        iiwa_joint_1: [{initial_joint_positions[0]}]
+        iiwa_joint_4: [{initial_joint_positions[1]}]
+        iiwa_joint_7: [{initial_joint_positions[2]}]
+- add_weld:
+    parent: world
+    child: iiwa::base
 - add_model:
     name: bat
     file: file://{PACKAGE_ROOT}/assets/bat.sdf
@@ -75,11 +82,17 @@ model_drivers:
       hand_model_name: wsg
       control_mode: torque_only
 """
+    
+    return model_directive
 
-def run_tee_ball(meshcat, record_time=3.0, dt=1e-2):
-    meshcat.Delete()
+def run_tee_ball(meshcat, joint_positions=None, driving_torque=None, record_time=3.0, dt=1e-2):
+    if meshcat is not None:
+        meshcat.Delete()
 
     builder = DiagramBuilder()
+
+    model_directive = make_model_directive(joint_positions)
+
     scenario = LoadScenario(data=model_directive)
     station = builder.AddSystem(MakeHardwareStation(scenario, meshcat))
     diagram = builder.Build()
@@ -90,7 +103,7 @@ def run_tee_ball(meshcat, record_time=3.0, dt=1e-2):
 
     #driving_torque = np.array([320, -100, 0, 0, 0])
     # Torque limits are 320, 176, 40
-    driving_torque = np.array([0, 0, 40])
+    driving_torque = np.array(driving_torque)
     station.GetInputPort("iiwa.torque").FixValue(station_context, driving_torque)
 
     # Record velocity of the ball
@@ -99,7 +112,8 @@ def run_tee_ball(meshcat, record_time=3.0, dt=1e-2):
     # RenderDiagram(station, max_depth=1)
     # pydot.graph_from_dot_data(station.GetGraphvizString(max_depth=1))[0].write_png('station_render.png')
 
-    meshcat.StartRecording()
+    if meshcat is not None:
+        meshcat.StartRecording()
     # Advance simulation for many time steps
 
     ball_states = []
@@ -108,7 +122,9 @@ def run_tee_ball(meshcat, record_time=3.0, dt=1e-2):
         simulator.AdvanceTo(time)
         ball_state = station.GetOutputPort("ball_state").Eval(station_context)
         ball_states.append(parse_ball_state(ball_state))
-    meshcat.PublishRecording()
+    
+    if meshcat is not None:
+        meshcat.PublishRecording()
 
-    print(exit_velo_mph(ball_states))
+    return exit_velo_mph(ball_states)
 
