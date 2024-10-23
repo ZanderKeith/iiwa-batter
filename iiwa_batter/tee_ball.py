@@ -25,18 +25,28 @@ from iiwa_batter.physics import parse_ball_state, exit_velo_mph
 tee_x = -0.05
 tee_y = -1.15
 
-model_directive = f"""
-directives: 
+
+
+def make_model_directive(initial_joint_positions):
+
+    if len(initial_joint_positions) == 3:
+        # Check to ensure the 
+        iiwa_directive = f"""
 - add_model:
-    name: iiwa
-    file: file://{PACKAGE_ROOT}/assets/iiwa14_tee_ball.urdf
-    default_joint_positions:
-        iiwa_joint_1: [1.57]
-        iiwa_joint_4: [0]
-        iiwa_joint_7: [-3]
+name: iiwa
+file: file://{PACKAGE_ROOT}/assets/iiwa14_tee_ball.urdf
+default_joint_positions:
+    iiwa_joint_1: [1.57]
+    iiwa_joint_4: [0]
+    iiwa_joint_7: [-3]
 - add_weld:
     parent: world
     child: iiwa::base
+"""
+
+    model_directive = f"""
+directives: 
+{iiwa_directive}
 - add_model:
     name: bat
     file: file://{PACKAGE_ROOT}/assets/bat.sdf
@@ -66,7 +76,7 @@ model_drivers:
       control_mode: torque_only
 """
 
-def run_tee_ball(meshcat, record_time=3.0):
+def run_tee_ball(meshcat, record_time=3.0, dt=1e-2):
     meshcat.Delete()
 
     builder = DiagramBuilder()
@@ -94,7 +104,6 @@ def run_tee_ball(meshcat, record_time=3.0):
 
     ball_states = []
 
-    dt = 1e-2
     for time in np.linspace(0, record_time, int(record_time/dt)):
         simulator.AdvanceTo(time)
         ball_state = station.GetOutputPort("ball_state").Eval(station_context)

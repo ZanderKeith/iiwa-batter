@@ -81,5 +81,5 @@ if __name__ == "__main__":
 
     # Get maximum distance for several angles
     angles = np.linspace(30, 45, 20)
-    distances = [ball_distance_mph(101, angle) for angle in angles]
+    distances = [ball_distance_mph(70, angle) for angle in angles]
     print(distances)
