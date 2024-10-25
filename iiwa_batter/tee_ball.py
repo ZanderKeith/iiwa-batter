@@ -117,11 +117,24 @@ def run_tee_ball(meshcat, joint_positions=None, driving_torque=None, record_time
     # Advance simulation for many time steps
 
     ball_states = []
+    joint_velocities = []
 
     for time in np.linspace(0, record_time, int(record_time/dt)):
         simulator.AdvanceTo(time)
         ball_state = station.GetOutputPort("ball_state").Eval(station_context)
+        joint_velocity = station.GetOutputPort("iiwa.velocity_estimated").Eval(station_context)
+        joint_velocities.append(joint_velocity)
+        zeroed_torque = driving_torque.copy()
+        for i, velocity_component in enumerate(joint_velocity):
+            if velocity_component > 1.5:
+                zeroed_torque[i] = -100
+            elif velocity_component < -1.5:
+                zeroed_torque[i] = 100
+        station.GetInputPort("iiwa.torque").FixValue(station_context, zeroed_torque)
+        
         ball_states.append(parse_ball_state(ball_state))
+
+    #print(joint_velocities)
     
     if meshcat is not None:
         meshcat.PublishRecording()
