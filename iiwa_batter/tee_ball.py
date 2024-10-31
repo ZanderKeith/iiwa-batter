@@ -126,10 +126,10 @@ def run_tee_ball(meshcat, joint_positions=None, driving_torque=None, record_time
         joint_velocities.append(joint_velocity)
         zeroed_torque = driving_torque.copy()
         for i, velocity_component in enumerate(joint_velocity):
-            if velocity_component > 1.5:
-                zeroed_torque[i] = -100
-            elif velocity_component < -1.5:
-                zeroed_torque[i] = 100
+            if velocity_component > np.pi*4:
+                zeroed_torque[i] = -10
+            elif velocity_component < -np.pi*4:
+                zeroed_torque[i] = 10
         station.GetInputPort("iiwa.torque").FixValue(station_context, zeroed_torque)
         
         ball_states.append(parse_ball_state(ball_state))

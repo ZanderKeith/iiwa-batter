@@ -12,8 +12,14 @@ JOINT_POSITION_LIMITS = {
 #     7: 40,
 # }
 
+# JOINT_EFFORT_LIMITS = {
+#     1: 176,
+#     4: 110,
+#     7: 40,
+# }
+
 JOINT_EFFORT_LIMITS = {
-    1: 176,
-    4: 110,
-    7: 40,
+    1: 320*0.7,
+    4: 176*0.7,
+    7: 40*0.7,
 }
