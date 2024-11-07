@@ -14,8 +14,8 @@ def compliant_bat():
     bat_modulus = 1.2e9 / 100
 
     # https://en.wikipedia.org/wiki/Baseball_bat
-    bat_length_inches = 36
-    bat_diameter_inches = 2.4
+    bat_length_inches = 42
+    bat_diameter_inches = 2.6
     bat_length = bat_length_inches * INCHES_TO_METERS
     bat_radius = bat_diameter_inches * INCHES_TO_METERS / 2
 
