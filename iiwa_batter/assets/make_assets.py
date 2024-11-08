@@ -45,7 +45,7 @@ def compliant_bat(bat_modulus, mesh_resolution, mu_dynamic, hunt_crossley_dissip
               </cylinder>
             </geometry>
             <drake:proximity_properties>
-              <drake:rigid_hydroelastic/>
+              <drake:compliant_hydroelastic/>
               <drake:hydroelastic_modulus>{bat_modulus}</drake:hydroelastic_modulus>
               <drake:mu_dynamic>{mu_dynamic}</drake:mu_dynamic>
               <drake:hunt_crossley_dissipation>{hunt_crossley_dissipation}</drake:hunt_crossley_dissipation>
@@ -93,7 +93,7 @@ def compliant_ball(ball_modulus, mesh_resolution, mu_dynamic, hunt_crossley_diss
               </sphere>
             </geometry>
             <drake:proximity_properties>
-              <drake:rigid_hydroelastic/>
+              <drake:compliant_hydroelastic/>
               <drake:hydroelastic_modulus>{ball_modulus}</drake:hydroelastic_modulus>
               <drake:mu_dynamic>{mu_dynamic}</drake:mu_dynamic>
               <drake:hunt_crossley_dissipation>{hunt_crossley_dissipation}</drake:hunt_crossley_dissipation>
