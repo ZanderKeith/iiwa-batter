@@ -22,7 +22,7 @@ from iiwa_batter.physics import parse_ball_state, exit_velo_mph
 
 # Throw the ball at a stationary bat and ensure the measured coefficient of restitution is about correct
 
-def make_model_directive(ball_pos):
+def make_model_directive(ball_pos, dt):
     model_directive = f"""
 directives: 
 - add_model:
@@ -45,8 +45,8 @@ directives:
 
 plant_config:
     contact_model: "hydroelastic"
-    discrete_contact_approximation: "similar"
-    time_step: 1e-4
+    discrete_contact_approximation: "lagged"
+    time_step: {dt}
     penetration_allowance: 8e-2
 """
     
@@ -59,21 +59,18 @@ def run_hydroelastic_tuning(meshcat, ball_pos, ball_velocity_x, record_time=1.0,
 
     builder = DiagramBuilder()
 
-    model_directive = make_model_directive(ball_pos)
+    model_directive = make_model_directive(ball_pos, dt)
 
     scenario = LoadScenario(data=model_directive)
     station = builder.AddSystem(MakeHardwareStation(scenario, meshcat))
     diagram = builder.Build()
     simulator = Simulator(diagram)
-
     context = simulator.get_context()
-    #station_context = station.CreateDefaultContext()
 
-    # From hardware station io
+    # Set initial velocity of the ball
     plant = station.GetSubsystemByName("plant")
     plant_context = plant.GetMyContextFromRoot(context)
     ball = plant.GetModelInstanceByName("ball")
-    # Set initial velocity of the ball
     plant.SetVelocities(plant_context, ball, np.array([0, 0, 0] + [ball_velocity_x] + [0, 0]))
 
     if debug_plot:
@@ -84,20 +81,29 @@ def run_hydroelastic_tuning(meshcat, ball_pos, ball_velocity_x, record_time=1.0,
     if meshcat is not None:
         meshcat.StartRecording()
 
-    for time in np.linspace(0, record_time, int(record_time/dt)):
+    times = np.linspace(0, record_time, int(record_time/dt))
+    ball_x_positions = np.zeros_like(times)
+    ball_x_velocities = np.zeros_like(times)
+    for i, time in enumerate(times):
         # if time == 0:
         #     # Make a spatial force to apply to the ball
         #     spatial_force = SpatialForce([0, 0, 0], [0, 0, 0])
         #     station.GetInputPort("applied_spatial_force").FixValue(station_context, spatial_force)
         simulator.AdvanceTo(time)
         #print(plant.GetVelocities(plant_context, ball))
+        ball_x_positions[i] = plant.GetPositions(plant_context, ball)[4]
+        ball_x_velocities[i] = plant.GetVelocities(plant_context, ball)[3]
 
     if meshcat is not None:
         meshcat.PublishRecording()
 
     final_velocity_x = plant.GetVelocities(plant_context, ball)[3]
 
-    return calculate_coefficient_of_restitution(ball_velocity_x, final_velocity_x)
+    min_x = min(ball_x_positions)
+    print(f"Minimum x position: {min_x}")
+    print(f"X position error: {min_x-0.06799999999999917}")
+
+    return calculate_coefficient_of_restitution(ball_velocity_x, final_velocity_x), ball_x_positions, ball_x_velocities, times
 
 
 def calculate_coefficient_of_restitution(initial_velocity, exit_velocity):
