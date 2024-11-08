@@ -1,20 +1,11 @@
 import numpy as np
 
 from pydrake.all import (
-    AddDefaultVisualization,
-    AddMultibodyPlantSceneGraph,
     DiagramBuilder,
-    LoadModelDirectives,
-    LoadModelDirectivesFromString,
-    Parser,
-    ProcessModelDirectives,
-    RigidTransform,
-    RollPitchYaw,
     Simulator,
 )
 
 from manipulation.station import LoadScenario, MakeHardwareStation
-from manipulation.utils import ConfigureParser, RenderDiagram
 
 from iiwa_batter import PACKAGE_ROOT
 from iiwa_batter.physics import parse_ball_state, exit_velo_mph
@@ -25,22 +16,22 @@ from iiwa_batter.physics import parse_ball_state, exit_velo_mph
 tee_x = -0.05
 tee_y = -1.15
 
-def make_model_directive(initial_joint_positions):
 
-#     if len(initial_joint_positions) == 3:
-#         # Check to ensure the 
-#         iiwa_directive = f"""
-# - add_model:
-# name: iiwa
-# file: file://{PACKAGE_ROOT}/assets/iiwa14_tee_ball.urdf
-# default_joint_positions:
-#     iiwa_joint_1: [{initial_joint_positions[0]}]
-#     iiwa_joint_4: [{initial_joint_positions[1]}]
-#     iiwa_joint_7: [{initial_joint_positions[2]}]
-# - add_weld:
-#     parent: world
-#     child: iiwa::base
-# """
+def make_model_directive(initial_joint_positions):
+    #     if len(initial_joint_positions) == 3:
+    #         # Check to ensure the
+    #         iiwa_directive = f"""
+    # - add_model:
+    # name: iiwa
+    # file: file://{PACKAGE_ROOT}/assets/iiwa14_tee_ball.urdf
+    # default_joint_positions:
+    #     iiwa_joint_1: [{initial_joint_positions[0]}]
+    #     iiwa_joint_4: [{initial_joint_positions[1]}]
+    #     iiwa_joint_7: [{initial_joint_positions[2]}]
+    # - add_weld:
+    #     parent: world
+    #     child: iiwa::base
+    # """
 
     model_directive = f"""
 directives: 
@@ -82,10 +73,13 @@ model_drivers:
       hand_model_name: wsg
       control_mode: torque_only
 """
-    
+
     return model_directive
 
-def run_tee_ball(meshcat, joint_positions=None, driving_torque=None, record_time=3.0, dt=1e-2):
+
+def run_tee_ball(
+    meshcat, joint_positions=None, driving_torque=None, record_time=3.0, dt=1e-2
+):
     if meshcat is not None:
         meshcat.Delete()
 
@@ -101,13 +95,13 @@ def run_tee_ball(meshcat, joint_positions=None, driving_torque=None, record_time
     context = simulator.get_context()
     station_context = station.GetMyContextFromRoot(context)
 
-    #driving_torque = np.array([320, -100, 0, 0, 0])
+    # driving_torque = np.array([320, -100, 0, 0, 0])
     # Torque limits are 320, 176, 40
     driving_torque = np.array(driving_torque)
     station.GetInputPort("iiwa.torque").FixValue(station_context, driving_torque)
 
     # Record velocity of the ball
-    
+
     # import pydot
     # RenderDiagram(station, max_depth=1)
     # pydot.graph_from_dot_data(station.GetGraphvizString(max_depth=1))[0].write_png('station_render.png')
@@ -119,25 +113,26 @@ def run_tee_ball(meshcat, joint_positions=None, driving_torque=None, record_time
     ball_states = []
     joint_velocities = []
 
-    for time in np.linspace(0, record_time, int(record_time/dt)):
+    for time in np.linspace(0, record_time, int(record_time / dt)):
         simulator.AdvanceTo(time)
         ball_state = station.GetOutputPort("ball_state").Eval(station_context)
-        joint_velocity = station.GetOutputPort("iiwa.velocity_estimated").Eval(station_context)
+        joint_velocity = station.GetOutputPort("iiwa.velocity_estimated").Eval(
+            station_context
+        )
         joint_velocities.append(joint_velocity)
         zeroed_torque = driving_torque.copy()
         for i, velocity_component in enumerate(joint_velocity):
-            if velocity_component > np.pi*4:
+            if velocity_component > np.pi * 4:
                 zeroed_torque[i] = -10
-            elif velocity_component < -np.pi*4:
+            elif velocity_component < -np.pi * 4:
                 zeroed_torque[i] = 10
         station.GetInputPort("iiwa.torque").FixValue(station_context, zeroed_torque)
-        
+
         ball_states.append(parse_ball_state(ball_state))
 
-    #print(joint_velocities)
-    
+    # print(joint_velocities)
+
     if meshcat is not None:
         meshcat.PublishRecording()
 
     return exit_velo_mph(ball_states)
-

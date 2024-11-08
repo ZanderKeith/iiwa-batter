@@ -5,13 +5,18 @@ INCHES_TO_METERS = 0.0254
 # https://en.wikipedia.org/wiki/Baseball_(ball)#:~:text=A%20regulation%20baseball%20is%209,(0.142%20to%200.149%20kg).
 ball_diameter_inches = 2.9
 ball_diameter = ball_diameter_inches * INCHES_TO_METERS
-BALL_RADIUS = ball_diameter/2
+BALL_RADIUS = ball_diameter / 2
 
-BALL_MASS = 0.1455 # kg
-BALL_DRAG_COEFFICIENT = 0.3 # https://www1.grc.nasa.gov/beginners-guide-to-aeronautics/drag-on-a-baseball/
+BALL_MASS = 0.1455  # kg
+BALL_DRAG_COEFFICIENT = (
+    0.3  # https://www1.grc.nasa.gov/beginners-guide-to-aeronautics/drag-on-a-baseball/
+)
 
-def compliant_bat(bat_modulus, mesh_resolution, mu_dynamic, hunt_crossley_dissipation, rigid_bat):
-    #bat_modulus = 1.2e9 / 100
+
+def compliant_bat(
+    bat_modulus, mesh_resolution, mu_dynamic, hunt_crossley_dissipation, rigid_bat
+):
+    # bat_modulus = 1.2e9 / 100
 
     # https://en.wikipedia.org/wiki/Baseball_bat
     bat_length_inches = 42
@@ -21,13 +26,13 @@ def compliant_bat(bat_modulus, mesh_resolution, mu_dynamic, hunt_crossley_dissip
 
     bat_mass = 1
 
-    #TODO: add inertia!
+    # TODO: add inertia!
     if rigid_bat:
         bat_model = "rigid_hydroelastic"
     else:
         bat_model = "compliant_hydroelastic"
 
-    # Typical baseball bat is about 
+    # Typical baseball bat is about
     return f"""<?xml version="1.0"?>
     <sdf version="1.7">
       <model name="bat">
@@ -72,10 +77,13 @@ def compliant_bat(bat_modulus, mesh_resolution, mu_dynamic, hunt_crossley_dissip
     </sdf>
     """
 
-def compliant_ball(ball_modulus, mesh_resolution, mu_dynamic, hunt_crossley_dissipation):
-    #ball_modulus = 69e6 / 100
 
-    #TODO: Add inertia!
+def compliant_ball(
+    ball_modulus, mesh_resolution, mu_dynamic, hunt_crossley_dissipation
+):
+    # ball_modulus = 69e6 / 100
+
+    # TODO: Add inertia!
 
     return f"""<?xml version="1.0"?>
     <sdf version="1.7">
@@ -118,6 +126,7 @@ def compliant_ball(ball_modulus, mesh_resolution, mu_dynamic, hunt_crossley_diss
       </model>
     </sdf>
     """
+
 
 def tee():
     mesh_resolution = 0.01
@@ -168,12 +177,33 @@ def tee():
     </sdf>
     """
 
-def write_assets(bat_modulus, ball_modulus, ball_resolution, bat_resolution, mu_dynamic=0.5, hunt_crossley_dissipation=1.25, rigid_bat=False):
+
+def write_assets(
+    bat_modulus,
+    ball_modulus,
+    ball_resolution,
+    bat_resolution,
+    mu_dynamic=0.5,
+    hunt_crossley_dissipation=1.25,
+    rigid_bat=False,
+):
     with open(f"{PACKAGE_ROOT}/assets/bat.sdf", "w+") as f:
-        f.write(compliant_bat(bat_modulus, bat_resolution, mu_dynamic, hunt_crossley_dissipation, rigid_bat))
+        f.write(
+            compliant_bat(
+                bat_modulus,
+                bat_resolution,
+                mu_dynamic,
+                hunt_crossley_dissipation,
+                rigid_bat,
+            )
+        )
 
     with open(f"{PACKAGE_ROOT}/assets/ball.sdf", "w+") as f:
-        f.write(compliant_ball(ball_modulus, ball_resolution, mu_dynamic, hunt_crossley_dissipation))
+        f.write(
+            compliant_ball(
+                ball_modulus, ball_resolution, mu_dynamic, hunt_crossley_dissipation
+            )
+        )
 
     with open(f"{PACKAGE_ROOT}/assets/tee.sdf", "w+") as f:
         f.write(tee())

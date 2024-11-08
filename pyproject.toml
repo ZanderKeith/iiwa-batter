@@ -15,7 +15,8 @@ ipykernel = "^6.29.5"
 nbformat = "^5.10.4"
 nbconvert = "^7.16.4"
 pydot = "^3.0.1"
-
+ruff = "^0.1.5"
+pre-commit = "^3.5.0"
 
 [build-system]
 requires = ["poetry-core"]
