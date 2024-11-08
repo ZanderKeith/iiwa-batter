@@ -10,7 +10,7 @@ BALL_RADIUS = ball_diameter/2
 BALL_MASS = 0.1455 # kg
 BALL_DRAG_COEFFICIENT = 0.3 # https://www1.grc.nasa.gov/beginners-guide-to-aeronautics/drag-on-a-baseball/
 
-def compliant_bat(bat_modulus, mesh_resolution, mu_dynamic, hunt_crossley_dissipation):
+def compliant_bat(bat_modulus, mesh_resolution, mu_dynamic, hunt_crossley_dissipation, rigid_bat):
     #bat_modulus = 1.2e9 / 100
 
     # https://en.wikipedia.org/wiki/Baseball_bat
@@ -22,6 +22,10 @@ def compliant_bat(bat_modulus, mesh_resolution, mu_dynamic, hunt_crossley_dissip
     bat_mass = 1
 
     #TODO: add inertia!
+    if rigid_bat:
+        bat_model = "rigid_hydroelastic"
+    else:
+        bat_model = "compliant_hydroelastic"
 
     # Typical baseball bat is about 
     return f"""<?xml version="1.0"?>
@@ -33,7 +37,7 @@ def compliant_bat(bat_modulus, mesh_resolution, mu_dynamic, hunt_crossley_dissip
             <mass>{bat_mass}</mass>
             <inertia>
               <ixx>0.016666</ixx> <ixy>0.0</ixy> <ixz>0.0</ixz>
-              <iyy>0.014166</iyy> <iyz>0.0</iyz>
+              <iyy>0.016666</iyy> <iyz>0.0</iyz>
               <izz>0.004166</izz>
             </inertia>
           </inertial>
@@ -45,7 +49,7 @@ def compliant_bat(bat_modulus, mesh_resolution, mu_dynamic, hunt_crossley_dissip
               </cylinder>
             </geometry>
             <drake:proximity_properties>
-              <drake:compliant_hydroelastic/>
+              <drake:{bat_model}/>
               <drake:hydroelastic_modulus>{bat_modulus}</drake:hydroelastic_modulus>
               <drake:mu_dynamic>{mu_dynamic}</drake:mu_dynamic>
               <drake:hunt_crossley_dissipation>{hunt_crossley_dissipation}</drake:hunt_crossley_dissipation>
@@ -81,8 +85,8 @@ def compliant_ball(ball_modulus, mesh_resolution, mu_dynamic, hunt_crossley_diss
           <inertial>
             <mass>{BALL_MASS}</mass>
             <inertia>
-              <ixx>0.016666</ixx> <ixy>0.0</ixy> <ixz>0.0</ixz>
-              <iyy>0.014166</iyy> <iyz>0.0</iyz>
+              <ixx>0.004166</ixx> <ixy>0.0</ixy> <ixz>0.0</ixz>
+              <iyy>0.004166</iyy> <iyz>0.0</iyz>
               <izz>0.004166</izz>
             </inertia>
           </inertial>
@@ -164,9 +168,9 @@ def tee():
     </sdf>
     """
 
-def write_assets(bat_modulus, ball_modulus, ball_resolution, bat_resolution, mu_dynamic=0.5, hunt_crossley_dissipation=1.25):
+def write_assets(bat_modulus, ball_modulus, ball_resolution, bat_resolution, mu_dynamic=0.5, hunt_crossley_dissipation=1.25, rigid_bat=False):
     with open(f"{PACKAGE_ROOT}/assets/bat.sdf", "w+") as f:
-        f.write(compliant_bat(bat_modulus, bat_resolution, mu_dynamic, hunt_crossley_dissipation))
+        f.write(compliant_bat(bat_modulus, bat_resolution, mu_dynamic, hunt_crossley_dissipation, rigid_bat))
 
     with open(f"{PACKAGE_ROOT}/assets/ball.sdf", "w+") as f:
         f.write(compliant_ball(ball_modulus, ball_resolution, mu_dynamic, hunt_crossley_dissipation))

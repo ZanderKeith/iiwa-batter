@@ -28,6 +28,9 @@ directives:
 - add_model:
     name: bat
     file: file://{PACKAGE_ROOT}/assets/bat.sdf
+    default_free_body_pose:
+        base:
+            translation: [0, 0, 0]
 - add_weld:
     parent: world
     child: bat::base
@@ -39,6 +42,12 @@ directives:
     default_free_body_pose:
         base:
             translation: [{ball_pos[0]}, {ball_pos[1]}, {ball_pos[2]}]
+
+plant_config:
+    contact_model: "hydroelastic"
+    discrete_contact_approximation: "similar"
+    time_step: 1e-4
+    penetration_allowance: 8e-2
 """
     
     return model_directive
