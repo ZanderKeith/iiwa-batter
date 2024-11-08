@@ -1,12 +1,10 @@
 import numpy as np
-
+from manipulation.station import LoadScenario, MakeHardwareStation
+from manipulation.utils import RenderDiagram
 from pydrake.all import (
     DiagramBuilder,
     Simulator,
 )
-
-from manipulation.station import LoadScenario, MakeHardwareStation
-from manipulation.utils import RenderDiagram
 
 from iiwa_batter import PACKAGE_ROOT
 
@@ -15,7 +13,7 @@ from iiwa_batter import PACKAGE_ROOT
 
 def make_model_directive(ball_pos, dt):
     model_directive = f"""
-directives: 
+directives:
 - add_model:
     name: bat
     file: file://{PACKAGE_ROOT}/assets/bat.sdf
@@ -83,12 +81,7 @@ def run_hydroelastic_tuning(
     ball_x_positions = np.zeros_like(times)
     ball_x_velocities = np.zeros_like(times)
     for i, time in enumerate(times):
-        # if time == 0:
-        #     # Make a spatial force to apply to the ball
-        #     spatial_force = SpatialForce([0, 0, 0], [0, 0, 0])
-        #     station.GetInputPort("applied_spatial_force").FixValue(station_context, spatial_force)
         simulator.AdvanceTo(time)
-        # print(plant.GetVelocities(plant_context, ball))
         ball_x_positions[i] = plant.GetPositions(plant_context, ball)[4]
         ball_x_velocities[i] = plant.GetVelocities(plant_context, ball)[3]
 
@@ -96,10 +89,6 @@ def run_hydroelastic_tuning(
         meshcat.PublishRecording()
 
     final_velocity_x = plant.GetVelocities(plant_context, ball)[3]
-
-    # min_x = min(ball_x_positions)
-    # print(f"Minimum x position: {min_x}")
-    # print(f"X position error: {min_x-0.06799999999999917}")
 
     return (
         calculate_coefficient_of_restitution(ball_velocity_x, final_velocity_x),

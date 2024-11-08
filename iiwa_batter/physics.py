@@ -1,6 +1,6 @@
 import numpy as np
 
-from iiwa_batter.assets.make_assets import BALL_MASS, BALL_RADIUS, BALL_DRAG_COEFFICIENT
+from iiwa_batter.assets.make_assets import BALL_DRAG_COEFFICIENT, BALL_MASS, BALL_RADIUS
 
 AIR_DENSITY_FENWAY = 1.29
 

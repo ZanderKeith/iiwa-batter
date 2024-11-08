@@ -1,14 +1,12 @@
 import numpy as np
-
+from manipulation.station import LoadScenario, MakeHardwareStation
 from pydrake.all import (
     DiagramBuilder,
     Simulator,
 )
 
-from manipulation.station import LoadScenario, MakeHardwareStation
-
 from iiwa_batter import PACKAGE_ROOT
-from iiwa_batter.physics import parse_ball_state, exit_velo_mph
+from iiwa_batter.physics import exit_velo_mph, parse_ball_state
 
 # TODO: just had a brainwave
 # I don't need to worry about locking joints into a given position if I change the urdf to do that for me
@@ -18,23 +16,8 @@ tee_y = -1.15
 
 
 def make_model_directive(initial_joint_positions):
-    #     if len(initial_joint_positions) == 3:
-    #         # Check to ensure the
-    #         iiwa_directive = f"""
-    # - add_model:
-    # name: iiwa
-    # file: file://{PACKAGE_ROOT}/assets/iiwa14_tee_ball.urdf
-    # default_joint_positions:
-    #     iiwa_joint_1: [{initial_joint_positions[0]}]
-    #     iiwa_joint_4: [{initial_joint_positions[1]}]
-    #     iiwa_joint_7: [{initial_joint_positions[2]}]
-    # - add_weld:
-    #     parent: world
-    #     child: iiwa::base
-    # """
-
     model_directive = f"""
-directives: 
+directives:
 - add_model:
     name: iiwa
     file: file://{PACKAGE_ROOT}/assets/iiwa14_tee_ball.urdf
