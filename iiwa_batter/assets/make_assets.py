@@ -5,27 +5,34 @@ INCHES_TO_METERS = 0.0254
 # https://en.wikipedia.org/wiki/Baseball_(ball)#:~:text=A%20regulation%20baseball%20is%209,(0.142%20to%200.149%20kg).
 ball_diameter_inches = 2.9
 ball_diameter = ball_diameter_inches * INCHES_TO_METERS
-BALL_RADIUS = ball_diameter/2
+BALL_RADIUS = ball_diameter / 2
 
-BALL_MASS = 0.1455 # kg
-BALL_DRAG_COEFFICIENT = 0.3 # https://www1.grc.nasa.gov/beginners-guide-to-aeronautics/drag-on-a-baseball/
+BALL_MASS = 0.1455  # kg
+BALL_DRAG_COEFFICIENT = (
+    0.3  # https://www1.grc.nasa.gov/beginners-guide-to-aeronautics/drag-on-a-baseball/
+)
 
-def compliant_bat():
-    bat_modulus = 1.2e9 / 100
+
+def compliant_bat(
+    bat_modulus, mesh_resolution, mu_dynamic, hunt_crossley_dissipation, rigid_bat
+):
+    # bat_modulus = 1.2e9 / 100
 
     # https://en.wikipedia.org/wiki/Baseball_bat
-    bat_length_inches = 36
-    bat_diameter_inches = 2.4
+    bat_length_inches = 42
+    bat_diameter_inches = 2.6
     bat_length = bat_length_inches * INCHES_TO_METERS
     bat_radius = bat_diameter_inches * INCHES_TO_METERS / 2
 
     bat_mass = 1
 
-    mesh_resolution = 0.01
+    # TODO: add inertia!
+    if rigid_bat:
+        bat_model = "rigid_hydroelastic"
+    else:
+        bat_model = "compliant_hydroelastic"
 
-    #TODO: add inertia!
-
-    # Typical baseball bat is about 
+    # Typical baseball bat is about
     return f"""<?xml version="1.0"?>
     <sdf version="1.7">
       <model name="bat">
@@ -35,7 +42,7 @@ def compliant_bat():
             <mass>{bat_mass}</mass>
             <inertia>
               <ixx>0.016666</ixx> <ixy>0.0</ixy> <ixz>0.0</ixz>
-              <iyy>0.014166</iyy> <iyz>0.0</iyz>
+              <iyy>0.016666</iyy> <iyz>0.0</iyz>
               <izz>0.004166</izz>
             </inertia>
           </inertial>
@@ -47,10 +54,10 @@ def compliant_bat():
               </cylinder>
             </geometry>
             <drake:proximity_properties>
-              <drake:compliant_hydroelastic/>
+              <drake:{bat_model}/>
               <drake:hydroelastic_modulus>{bat_modulus}</drake:hydroelastic_modulus>
-              <drake:mu_dynamic>0.5</drake:mu_dynamic>
-              <drake:hunt_crossley_dissipation>1.25</drake:hunt_crossley_dissipation>
+              <drake:mu_dynamic>{mu_dynamic}</drake:mu_dynamic>
+              <drake:hunt_crossley_dissipation>{hunt_crossley_dissipation}</drake:hunt_crossley_dissipation>
               <drake:mesh_resolution_hint>{mesh_resolution}</drake:mesh_resolution_hint>
             </drake:proximity_properties>
           </collision>
@@ -70,12 +77,13 @@ def compliant_bat():
     </sdf>
     """
 
-def compliant_ball():
-    ball_modulus = 69e6 / 100
 
-    resolution_hint = 0.01
+def compliant_ball(
+    ball_modulus, mesh_resolution, mu_dynamic, hunt_crossley_dissipation
+):
+    # ball_modulus = 69e6 / 100
 
-    #TODO: Add inertia!
+    # TODO: Add inertia!
 
     return f"""<?xml version="1.0"?>
     <sdf version="1.7">
@@ -85,8 +93,8 @@ def compliant_ball():
           <inertial>
             <mass>{BALL_MASS}</mass>
             <inertia>
-              <ixx>0.016666</ixx> <ixy>0.0</ixy> <ixz>0.0</ixz>
-              <iyy>0.014166</iyy> <iyz>0.0</iyz>
+              <ixx>0.004166</ixx> <ixy>0.0</ixy> <ixz>0.0</ixz>
+              <iyy>0.004166</iyy> <iyz>0.0</iyz>
               <izz>0.004166</izz>
             </inertia>
           </inertial>
@@ -99,9 +107,9 @@ def compliant_ball():
             <drake:proximity_properties>
               <drake:compliant_hydroelastic/>
               <drake:hydroelastic_modulus>{ball_modulus}</drake:hydroelastic_modulus>
-              <drake:mu_dynamic>0.5</drake:mu_dynamic>
-              <drake:hunt_crossley_dissipation>1.25</drake:hunt_crossley_dissipation>
-              <drake:mesh_resolution_hint>{resolution_hint}</drake:mesh_resolution_hint>
+              <drake:mu_dynamic>{mu_dynamic}</drake:mu_dynamic>
+              <drake:hunt_crossley_dissipation>{hunt_crossley_dissipation}</drake:hunt_crossley_dissipation>
+              <drake:mesh_resolution_hint>{mesh_resolution}</drake:mesh_resolution_hint>
             </drake:proximity_properties>
           </collision>
           <visual name="visual">
@@ -118,6 +126,7 @@ def compliant_ball():
       </model>
     </sdf>
     """
+
 
 def tee():
     mesh_resolution = 0.01
@@ -168,12 +177,33 @@ def tee():
     </sdf>
     """
 
-if __name__ == "__main__":
-    with open(f"{PACKAGE_ROOT}/assets/bat.sdf", "w") as f:
-        f.write(compliant_bat())
 
-    with open(f"{PACKAGE_ROOT}/assets/ball.sdf", "w") as f:
-        f.write(compliant_ball())
+def write_assets(
+    bat_modulus,
+    ball_modulus,
+    ball_resolution,
+    bat_resolution,
+    mu_dynamic=0.5,
+    hunt_crossley_dissipation=1.25,
+    rigid_bat=False,
+):
+    with open(f"{PACKAGE_ROOT}/assets/bat.sdf", "w+") as f:
+        f.write(
+            compliant_bat(
+                bat_modulus,
+                bat_resolution,
+                mu_dynamic,
+                hunt_crossley_dissipation,
+                rigid_bat,
+            )
+        )
 
-    with open(f"{PACKAGE_ROOT}/assets/tee.sdf", "w") as f:
+    with open(f"{PACKAGE_ROOT}/assets/ball.sdf", "w+") as f:
+        f.write(
+            compliant_ball(
+                ball_modulus, ball_resolution, mu_dynamic, hunt_crossley_dissipation
+            )
+        )
+
+    with open(f"{PACKAGE_ROOT}/assets/tee.sdf", "w+") as f:
         f.write(tee())
