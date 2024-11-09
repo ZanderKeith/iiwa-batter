@@ -15,6 +15,8 @@ from iiwa_batter import PACKAGE_ROOT
 # KR 8 R1440-2 arc HW
 # https://www.kuka.com/-/media/kuka-downloads/imported/8350ff3ca11642998dbdc81dcc2ed44c/0000355820_en.pdf?rev=f5b24d4312264c1db9c68e18b70a3dba&hash=91561F39182A5B1DDC56207C38D44705
 
+# In the future, might need to lock the fixed 
+
 def lock_missing_joint(robot_constraints: dict) -> dict:
     for robot in ROBOT_CONSTRAINTS.keys():
         for joint in ROBOT_CONSTRAINTS[robot]["joint_range"].keys():
