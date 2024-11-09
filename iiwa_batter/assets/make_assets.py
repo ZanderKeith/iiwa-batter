@@ -202,6 +202,27 @@ def strike_zone():
     </sdf>
     """
 
+def sweet_spot():
+    return f"""<?xml version="1.0"?>
+    <sdf version="1.7">
+      <model name="sweet_spot">
+        <pose>0 0 0 0 0 0</pose>
+        <link name="base">
+          <visual name="visual">
+            <geometry>
+              <sphere>
+                <radius>0.05</radius>
+              </sphere>
+            </geometry>
+            <material>
+              <diffuse>1.0 1.0 1.0 0.5</diffuse>
+            </material>
+          </visual>
+        </link>
+      </model>
+    </sdf>
+    """
+
 def write_assets(
     bat_modulus,
     ball_modulus,
@@ -233,4 +254,7 @@ def write_assets(
         f.write(tee())
 
     with open(f"{PACKAGE_ROOT}/assets/strike_zone.sdf", "w+") as f:
-        f.write(strike_zone(0.5, 0.5))
+        f.write(strike_zone())
+
+    with open(f"{PACKAGE_ROOT}/assets/sweet_spot.sdf", "w+") as f:
+        f.write(sweet_spot())

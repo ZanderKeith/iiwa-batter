@@ -12,7 +12,7 @@ def make_model_directive(initial_joint_positions, dt=DEFAULT_TIMESTEP):
     # We're pitchin the ball from +x to -x
     # The robot is sitting at the origin because I ain't messing with blender
 
-    plate_offset_y = -1
+    plate_offset_y = -0.8
     pitch_start_x = feet_to_meters(60.5) # Pitcher's mound is 60.5 feet from home plate
     pitch_start_z = feet_to_meters(5.9)
 
@@ -43,6 +43,14 @@ directives:
     X_PC:
         translation: [0, 0, 0.2]
 - add_model:
+    name: sweet_spot
+    file: file://{PACKAGE_ROOT}/assets/sweet_spot.sdf
+- add_weld:
+    parent: bat::base
+    child: sweet_spot::base
+    X_PC:
+        translation: [0, 0, 0.4]
+- add_model:
     name: ball
     file: file://{PACKAGE_ROOT}/assets/ball.sdf
     default_free_body_pose:
@@ -71,7 +79,7 @@ plant_config:
 
     return model_directive
 
-def run_pitch_check(meshcat, record_time, pitch_velocity_mph=90, joint_positions=None, dt=DEFAULT_TIMESTEP):
+def run_pitch_check(meshcat, record_time, pitch_velocity_mph=90, save_time = dt=DEFAULT_TIMESTEP):
     if meshcat is not None:
         meshcat.Delete()
 
