@@ -77,6 +77,7 @@ def compliant_bat(
     </sdf>
     """
 
+
 def compliant_ball(
     ball_modulus, mesh_resolution, mu_dynamic, hunt_crossley_dissipation
 ):
@@ -125,6 +126,7 @@ def compliant_ball(
       </model>
     </sdf>
     """
+
 
 def tee():
     mesh_resolution = 0.01
@@ -177,7 +179,7 @@ def tee():
 
 
 def strike_zone():
-    # Strike zone is 17 inches wide 
+    # Strike zone is 17 inches wide
     width = 17 * INCHES_TO_METERS
     # Eyeballing the height for between joints of the robot
     height = 0.5
@@ -202,8 +204,9 @@ def strike_zone():
     </sdf>
     """
 
+
 def sweet_spot():
-    return f"""<?xml version="1.0"?>
+    return """<?xml version="1.0"?>
     <sdf version="1.7">
       <model name="sweet_spot">
         <pose>0 0 0 0 0 0</pose>
@@ -222,6 +225,7 @@ def sweet_spot():
       </model>
     </sdf>
     """
+
 
 def write_assets(
     bat_modulus,

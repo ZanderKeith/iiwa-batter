@@ -5,15 +5,16 @@ from pydrake.all import (
     Simulator,
 )
 
-from iiwa_batter import PACKAGE_ROOT, DEFAULT_TIMESTEP
+from iiwa_batter import DEFAULT_TIMESTEP, PACKAGE_ROOT
 from iiwa_batter.physics import feet_to_meters, mph_to_mps
+
 
 def make_model_directive(initial_joint_positions, dt=DEFAULT_TIMESTEP):
     # We're pitchin the ball from +x to -x
     # The robot is sitting next to the origin
 
     plate_offset_y = 0.8
-    pitch_start_x = feet_to_meters(60.5) # Pitcher's mound is 60.5 feet from home plate
+    pitch_start_x = feet_to_meters(60.5)  # Pitcher's mound is 60.5 feet from home plate
     pitch_start_z = feet_to_meters(5.9)
 
     strike_zone_z = 0.6
@@ -24,7 +25,7 @@ def make_model_directive(initial_joint_positions, dt=DEFAULT_TIMESTEP):
 directives:
 - add_model:
     name: iiwa
-    file: file://{PACKAGE_ROOT}/assets/iiwa14.urdf
+    file: file://{PACKAGE_ROOT}/assets/iiwa14_limitless.urdf
     default_joint_positions:
         iiwa_joint_1: [{initial_joint_positions[1]}]
         iiwa_joint_2: [{initial_joint_positions[2]}]
@@ -85,13 +86,16 @@ plant_config:
 
     return model_directive
 
-def run_pitch_check(meshcat, record_time, pitch_velocity_mph=90, save_time=0.45, dt=DEFAULT_TIMESTEP):
+
+def run_pitch_check(
+    meshcat, record_time, pitch_velocity_mph=90, save_time=0.45, dt=DEFAULT_TIMESTEP
+):
     if meshcat is not None:
         meshcat.Delete()
 
     builder = DiagramBuilder()
 
-    model_directive = make_model_directive([0]*8, dt)
+    model_directive = make_model_directive([0] * 8, dt)
 
     scenario = LoadScenario(data=model_directive)
     station = builder.AddSystem(MakeHardwareStation(scenario, meshcat))
@@ -101,15 +105,16 @@ def run_pitch_check(meshcat, record_time, pitch_velocity_mph=90, save_time=0.45,
 
     # Just turn off the torque for the time being
     station_context = station.GetMyContextFromRoot(context)
-    station.GetInputPort("iiwa.torque").FixValue(station_context, [0]*7)
+    station.GetInputPort("iiwa.torque").FixValue(station_context, [0] * 7)
 
     # Set initial velocity of the ball
     plant = station.GetSubsystemByName("plant")
     plant_context = plant.GetMyContextFromRoot(context)
     ball = plant.GetModelInstanceByName("ball")
     ball_velocity_x = mph_to_mps(pitch_velocity_mph)
-    plant.SetVelocities(plant_context, ball, np.array([0, 0, 0] + [-1*ball_velocity_x] + [0, -0.2]))
-
+    plant.SetVelocities(
+        plant_context, ball, np.array([0, 0, 0] + [-1 * ball_velocity_x] + [0, -0.2])
+    )
 
     if meshcat is not None:
         meshcat.StartRecording()
@@ -124,25 +129,23 @@ def run_pitch_check(meshcat, record_time, pitch_velocity_mph=90, save_time=0.45,
 
     ball_state = {
         "time": save_time,
-        "position":
-            {
-                "q0": ball_position[0],
-                "q1": ball_position[1],
-                "q2": ball_position[2],
-                "q3": ball_position[3],
-                "x": ball_position[4],
-                "y": ball_position[5],
-                "z": ball_position[6],
-            },
-        "velocity":
-            {
-                "rx": ball_velocity[0],
-                "ry": ball_velocity[1],
-                "rz": ball_velocity[2],
-                "vx": ball_velocity[3],
-                "vy": ball_velocity[4],
-                "vz": ball_velocity[5],
-            }
+        "position": {
+            "q0": ball_position[0],
+            "q1": ball_position[1],
+            "q2": ball_position[2],
+            "q3": ball_position[3],
+            "x": ball_position[4],
+            "y": ball_position[5],
+            "z": ball_position[6],
+        },
+        "velocity": {
+            "rx": ball_velocity[0],
+            "ry": ball_velocity[1],
+            "rz": ball_velocity[2],
+            "vx": ball_velocity[3],
+            "vy": ball_velocity[4],
+            "vz": ball_velocity[5],
+        },
     }
 
     return ball_state

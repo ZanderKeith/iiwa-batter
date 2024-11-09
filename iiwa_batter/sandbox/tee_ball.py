@@ -5,7 +5,7 @@ from pydrake.all import (
     Simulator,
 )
 
-from iiwa_batter import PACKAGE_ROOT, DEFAULT_TIMESTEP
+from iiwa_batter import DEFAULT_TIMESTEP, PACKAGE_ROOT
 from iiwa_batter.physics import exit_velo_mph, parse_ball_state
 
 # TODO: just had a brainwave
@@ -61,7 +61,11 @@ model_drivers:
 
 
 def run_tee_ball(
-    meshcat, joint_positions=None, driving_torque=None, record_time=3.0, dt=DEFAULT_TIMESTEP
+    meshcat,
+    joint_positions=None,
+    driving_torque=None,
+    record_time=3.0,
+    dt=DEFAULT_TIMESTEP,
 ):
     if meshcat is not None:
         meshcat.Delete()

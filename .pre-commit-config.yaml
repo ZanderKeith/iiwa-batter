@@ -2,6 +2,7 @@ repos:
   - repo: local
     hooks:
       # https://zhauniarovich.com/post/2020/2020-06-clearing-jupyter-output/
+      # poetry run pre-commit run --show-diff-on-failure --color=always --all-files
       - id: jupyter-nb-clear-output
         name: jupyter-nb-clear-output
         files: \.ipynb$

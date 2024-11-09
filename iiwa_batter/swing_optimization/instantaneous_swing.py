@@ -1,18 +1,25 @@
 import numpy as np
 from manipulation.station import LoadScenario, MakeHardwareStation
-from manipulation.utils import RenderDiagram
 from pydrake.all import (
     DiagramBuilder,
     Simulator,
 )
 
-from iiwa_batter import PACKAGE_ROOT, DEFAULT_TIMESTEP
+from iiwa_batter import DEFAULT_TIMESTEP
 from iiwa_batter.sandbox.pitch_check import make_model_directive
+
 
 def loss_function():
     return 0
 
-def run_instantaneous_swing(meshcat, plate_joint_positions, plate_joint_velocities, plate_ball_state_arrays:tuple[np.ndarray, np.ndarray], dt=DEFAULT_TIMESTEP):
+
+def run_instantaneous_swing(
+    meshcat,
+    plate_joint_positions,
+    plate_joint_velocities,
+    plate_ball_state_arrays: tuple[np.ndarray, np.ndarray],
+    dt=DEFAULT_TIMESTEP,
+):
     if meshcat is not None:
         meshcat.Delete()
 
@@ -49,7 +56,7 @@ def run_instantaneous_swing(meshcat, plate_joint_positions, plate_joint_velociti
 
     # Just turn off the torque for the time being
     station_context = station.GetMyContextFromRoot(context)
-    station.GetInputPort("iiwa.torque").FixValue(station_context, [0]*7)
+    station.GetInputPort("iiwa.torque").FixValue(station_context, [0] * 7)
 
     # If the ball is traveling forwards, get how far it flies.
     if meshcat is not None:
