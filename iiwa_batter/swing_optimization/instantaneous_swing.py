@@ -33,13 +33,25 @@ def run_instantaneous_swing(
     simulator = Simulator(diagram)
     context = simulator.get_context()
 
+    # Just turn off the torque for the time being
+    station_context = station.GetMyContextFromRoot(context)
+    station.GetInputPort("iiwa.torque").FixValue(station_context, [0] * 7)
+
+    simulator.AdvanceTo(0)
     plant = station.GetSubsystemByName("plant")
     plant_context = plant.GetMyContextFromRoot(context)
 
-    # Get the position of the sweet spot
+    # Get the position of the sweet spot (ok this needs some work...)
     sweet_spot = plant.GetModelInstanceByName("sweet_spot")
-    sweet_spot_position = plant.GetPositions(plant_context, sweet_spot)
-    # If the sweet spot is too far from the ball's position when it crosses the strike zone, stop here and return cost function
+    # sweet_spot_position = plant.GetPositions(plant_context, sweet_spot)[4:]
+    # # If the sweet spot is too far from the ball's position when it crosses the strike zone, stop here and return cost function
+    # # I know the ball is directly over the plate at x = 0, y = 0, so we're only concerned with z
+    # ball_z = plate_ball_state_arrays[0][7]
+    # relevant_ball_position = np.array([0, 0, ball_z])
+    # distance = np.linalg.norm(relevant_ball_position - sweet_spot_position)
+    # if distance > 0.2:
+    #     print("Too far away!")
+    #     return
 
     # The bat is in a position where it has a chance to hit the ball
     # Ensure there are no self-collisions. If there are, return some metric of how bad the self-collision is
@@ -54,10 +66,6 @@ def run_instantaneous_swing(
     iiwa = plant.GetModelInstanceByName("iiwa")
     plant.SetVelocities(plant_context, iiwa, plate_joint_velocities)
 
-    # Just turn off the torque for the time being
-    station_context = station.GetMyContextFromRoot(context)
-    station.GetInputPort("iiwa.torque").FixValue(station_context, [0] * 7)
-
     # If the ball is traveling forwards, get how far it flies.
     if meshcat is not None:
         meshcat.StartRecording()
@@ -66,3 +74,7 @@ def run_instantaneous_swing(
 
     if meshcat is not None:
         meshcat.PublishRecording()
+
+    # Get ball velocities
+    ball_position = plant.GetPositions(plant_context, ball)
+    return ball_position

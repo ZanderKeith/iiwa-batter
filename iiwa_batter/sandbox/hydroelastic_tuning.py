@@ -62,9 +62,7 @@ def run_hydroelastic_tuning(
     plant = station.GetSubsystemByName("plant")
     plant_context = plant.GetMyContextFromRoot(context)
     ball = plant.GetModelInstanceByName("ball")
-    plant.SetVelocities(
-        plant_context, ball, np.array([0, 0, 0] + [ball_velocity_x] + [0, 0])
-    )
+    plant.SetVelocities(plant_context, ball, np.array([0, 0, 0, ball_velocity_x, 0, 0]))
 
     if debug_plot:
         import pydot

@@ -13,7 +13,7 @@ def make_model_directive(initial_joint_positions, dt=DEFAULT_TIMESTEP):
     # We're pitchin the ball from +x to -x
     # The robot is sitting next to the origin
 
-    plate_offset_y = 0.8
+    plate_offset_y = 1.2
     pitch_start_x = feet_to_meters(60.5)  # Pitcher's mound is 60.5 feet from home plate
     pitch_start_z = feet_to_meters(5.9)
 
@@ -48,7 +48,7 @@ directives:
     parent: iiwa::iiwa_link_ee
     child: bat::base
     X_PC:
-        translation: [0, 0, 0.2]
+        translation: [0.04, 0, 0.3]
 - add_model:
     name: sweet_spot
     file: file://{PACKAGE_ROOT}/assets/sweet_spot.sdf
@@ -113,7 +113,7 @@ def run_pitch_check(
     ball = plant.GetModelInstanceByName("ball")
     ball_velocity_x = mph_to_mps(pitch_velocity_mph)
     plant.SetVelocities(
-        plant_context, ball, np.array([0, 0, 0] + [-1 * ball_velocity_x] + [0, -0.2])
+        plant_context, ball, np.array([0, 0, 0, -1 * ball_velocity_x, 0, -0.2])
     )
 
     if meshcat is not None:
