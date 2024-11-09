@@ -4,6 +4,17 @@ from iiwa_batter.assets.make_assets import BALL_DRAG_COEFFICIENT, BALL_MASS, BAL
 
 AIR_DENSITY_FENWAY = 1.29
 
+def mph_to_mps(mph):
+    return mph * 0.44704
+
+def mps_to_mph(mps):
+    return mps / 0.44704
+
+def feet_to_meters(feet):
+    return feet * 0.3048
+
+def meters_to_feet(meters):
+    return meters / 0.3048
 
 def ball_flight_path(initial_position, initial_velocity, timestep=1e-2):
     g = 9.81  # gravitational acceleration (m/s^2)
@@ -38,7 +49,7 @@ def ball_flight_path(initial_position, initial_velocity, timestep=1e-2):
 
 def ball_distance_mph(initial_speed_mph, angle=45):
     """Just to compare with my intuition, what is the distance you get from a particular exit velocity"""
-    initial_speed = initial_speed_mph * 0.44704  # convert to m/s
+    initial_speed = mph_to_mps(initial_speed_mph)
     initial_position = [0.0, 0.0, 1.0]  # 1 meter above the ground
     initial_velocity = [
         0.0,
@@ -47,7 +58,7 @@ def ball_distance_mph(initial_speed_mph, angle=45):
     ]
     path = ball_flight_path(initial_position, initial_velocity)
     distance = np.linalg.norm(path[-1, :2] - path[0, :2])
-    distance_feet = distance * 3.28084
+    distance_feet = meters_to_feet(distance)
     return distance_feet
 
 
@@ -64,7 +75,7 @@ def exit_velo_mph(states, range_check=0.5):
 
     velocity = state[1]
     speed = np.linalg.norm(velocity)
-    speed_mph = speed * 2.23694
+    speed_mph = mps_to_mph(speed)
 
     return speed_mph
 
