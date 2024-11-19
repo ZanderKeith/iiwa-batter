@@ -1,6 +1,5 @@
 from iiwa_batter import PACKAGE_ROOT
-from iiwa_batter.physics import INCHES_TO_METERS, BALL_MASS, BALL_RADIUS
-
+from iiwa_batter.physics import BALL_MASS, BALL_RADIUS, INCHES_TO_METERS
 
 
 def compliant_bat(

@@ -5,17 +5,26 @@ from pydrake.all import (
     Simulator,
 )
 
-from iiwa_batter import PITCH_TIMESTEP, PACKAGE_ROOT
-from iiwa_batter.physics import feet_to_meters, mph_to_mps, PLATE_OFFSET_Y, PITCH_START_X, PITCH_START_Z, STRIKE_ZONE_Z
+from iiwa_batter import PACKAGE_ROOT, PITCH_TIMESTEP
+from iiwa_batter.physics import (
+    PITCH_START_X,
+    PITCH_START_Z,
+    PLATE_OFFSET_Y,
+    STRIKE_ZONE_Z,
+)
 
-FLIGHT_TIME_MULTIPLE = 1.04 # Extra time to allow the ball to pass through the strike zone
+FLIGHT_TIME_MULTIPLE = (
+    1.04  # Extra time to allow the ball to pass through the strike zone
+)
 
 
 def make_model_directive(initial_joint_positions, dt=PITCH_TIMESTEP):
     # We're pitchin the ball from +x to -x
     # The robot is sitting next to the origin
 
-    base_rotation_deg = np.rad2deg(initial_joint_positions[0])
+    base_rotation_deg = np.rad2deg(
+        np.pi / 4
+    )  # Rotates the base towards the plate just a little so the first joint doesn't max out before crossing the strike zone
 
     model_directive = f"""
 directives:
@@ -23,13 +32,13 @@ directives:
     name: iiwa
     file: file://{PACKAGE_ROOT}/assets/iiwa14_limitless.urdf
     default_joint_positions:
-        iiwa_joint_1: [{initial_joint_positions[1]}]
-        iiwa_joint_2: [{initial_joint_positions[2]}]
-        iiwa_joint_3: [{initial_joint_positions[3]}]
-        iiwa_joint_4: [{initial_joint_positions[4]}]
-        iiwa_joint_5: [{initial_joint_positions[5]}]
-        iiwa_joint_6: [{initial_joint_positions[6]}]
-        iiwa_joint_7: [{initial_joint_positions[7]}]
+        iiwa_joint_1: [{initial_joint_positions[0]}]
+        iiwa_joint_2: [{initial_joint_positions[1]}]
+        iiwa_joint_3: [{initial_joint_positions[2]}]
+        iiwa_joint_4: [{initial_joint_positions[3]}]
+        iiwa_joint_5: [{initial_joint_positions[4]}]
+        iiwa_joint_6: [{initial_joint_positions[5]}]
+        iiwa_joint_7: [{initial_joint_positions[6]}]
 - add_weld:
     parent: world
     child: iiwa::base
@@ -108,7 +117,9 @@ def run_pitch_check(
     plant_context = plant.GetMyContextFromRoot(context)
     ball = plant.GetModelInstanceByName("ball")
     plant.SetVelocities(
-        plant_context, ball, np.array([0, 0, 0, pitch_velocity[0], pitch_velocity[1], pitch_velocity[2]])
+        plant_context,
+        ball,
+        np.array([0, 0, 0, pitch_velocity[0], pitch_velocity[1], pitch_velocity[2]]),
     )
 
     if meshcat is not None:

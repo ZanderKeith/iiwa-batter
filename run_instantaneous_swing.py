@@ -6,7 +6,8 @@ from iiwa_batter import PACKAGE_ROOT, CONTACT_TIMESTEP
 from iiwa_batter.swing_optimization.instantaneous_swing import run_instantaneous_swing
 from iiwa_batter.robot_constraints.get_joint_constraints import JOINT_CONSTRAINTS
 
-robot_constraints = JOINT_CONSTRAINTS["iiwa14"]
+# "iiwa14" "kr6r900" "slugger"
+robot_constraints = JOINT_CONSTRAINTS["kr6r900"]
 
 # Run gaussian process optimization to find the joint velocity which gives the best ball distance
 
