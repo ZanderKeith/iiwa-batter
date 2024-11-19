@@ -1,16 +1,6 @@
 from iiwa_batter import PACKAGE_ROOT
+from iiwa_batter.physics import INCHES_TO_METERS, BALL_MASS, BALL_RADIUS
 
-INCHES_TO_METERS = 0.0254
-
-# https://en.wikipedia.org/wiki/Baseball_(ball)#:~:text=A%20regulation%20baseball%20is%209,(0.142%20to%200.149%20kg).
-ball_diameter_inches = 2.9
-ball_diameter = ball_diameter_inches * INCHES_TO_METERS
-BALL_RADIUS = ball_diameter / 2
-
-BALL_MASS = 0.1455  # kg
-BALL_DRAG_COEFFICIENT = (
-    0.3  # https://www1.grc.nasa.gov/beginners-guide-to-aeronautics/drag-on-a-baseball/
-)
 
 
 def compliant_bat(

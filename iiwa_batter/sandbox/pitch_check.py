@@ -5,19 +5,13 @@ from pydrake.all import (
     Simulator,
 )
 
-from iiwa_batter import DEFAULT_TIMESTEP, PACKAGE_ROOT
-from iiwa_batter.physics import feet_to_meters, mph_to_mps
+from iiwa_batter import PITCH_TIMESTEP, PACKAGE_ROOT
+from iiwa_batter.physics import feet_to_meters, mph_to_mps, PLATE_OFFSET_Y, PITCH_START_X, PITCH_START_Z, STRIKE_ZONE_Z
 
 
-def make_model_directive(initial_joint_positions, dt=DEFAULT_TIMESTEP):
+def make_model_directive(initial_joint_positions, dt=PITCH_TIMESTEP):
     # We're pitchin the ball from +x to -x
     # The robot is sitting next to the origin
-
-    plate_offset_y = 1.2
-    pitch_start_x = feet_to_meters(60.5)  # Pitcher's mound is 60.5 feet from home plate
-    pitch_start_z = feet_to_meters(5.9)
-
-    strike_zone_z = 0.6
 
     base_rotation_deg = np.rad2deg(initial_joint_positions[0])
 
@@ -40,7 +34,7 @@ directives:
     X_PC:
         rotation: !Rpy
             deg: [0, 0, {base_rotation_deg}]
-        translation: [0, {plate_offset_y}, 0]
+        translation: [0, {PLATE_OFFSET_Y}, 0]
 - add_model:
     name: bat
     file: file://{PACKAGE_ROOT}/assets/bat.sdf
@@ -62,7 +56,7 @@ directives:
     file: file://{PACKAGE_ROOT}/assets/ball.sdf
     default_free_body_pose:
         base:
-            translation: [{pitch_start_x}, 0, {pitch_start_z}]
+            translation: [{PITCH_START_X}, 0, {PITCH_START_Z}]
 - add_model:
     name: strike_zone
     file: file://{PACKAGE_ROOT}/assets/strike_zone.sdf
@@ -70,7 +64,7 @@ directives:
     parent: world
     child: strike_zone::base
     X_PC:
-        translation: [0, 0, {strike_zone_z}]
+        translation: [0, 0, {STRIKE_ZONE_Z}]
 
 model_drivers:
     iiwa: !IiwaDriver
@@ -88,7 +82,7 @@ plant_config:
 
 
 def run_pitch_check(
-    meshcat, record_time, pitch_velocity_mph=90, save_time=0.45, dt=DEFAULT_TIMESTEP
+    meshcat, record_time, pitch_velocity, save_time=0.45, dt=PITCH_TIMESTEP
 ):
     if meshcat is not None:
         meshcat.Delete()
@@ -111,9 +105,8 @@ def run_pitch_check(
     plant = station.GetSubsystemByName("plant")
     plant_context = plant.GetMyContextFromRoot(context)
     ball = plant.GetModelInstanceByName("ball")
-    ball_velocity_x = mph_to_mps(pitch_velocity_mph)
     plant.SetVelocities(
-        plant_context, ball, np.array([0, 0, 0, -1 * ball_velocity_x, 0, -0.2])
+        plant_context, ball, np.array([0, 0, 0, pitch_velocity[0], pitch_velocity[1], pitch_velocity[2]])
     )
 
     if meshcat is not None:
