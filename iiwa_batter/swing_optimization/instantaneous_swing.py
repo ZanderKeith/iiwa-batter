@@ -6,6 +6,7 @@ from pydrake.all import (
 )
 
 from iiwa_batter import DEFAULT_TIMESTEP
+from iiwa_batter.physics import ball_flight_path
 from iiwa_batter.sandbox.pitch_check import make_model_directive
 
 
@@ -42,7 +43,7 @@ def run_instantaneous_swing(
     plant_context = plant.GetMyContextFromRoot(context)
 
     # Get the position of the sweet spot (ok this needs some work...)
-    sweet_spot = plant.GetModelInstanceByName("sweet_spot")
+    # sweet_spot = plant.GetModelInstanceByName("sweet_spot")
     # sweet_spot_position = plant.GetPositions(plant_context, sweet_spot)[4:]
     # # If the sweet spot is too far from the ball's position when it crosses the strike zone, stop here and return cost function
     # # I know the ball is directly over the plate at x = 0, y = 0, so we're only concerned with z
@@ -75,6 +76,19 @@ def run_instantaneous_swing(
     if meshcat is not None:
         meshcat.PublishRecording()
 
-    # Get ball velocities
-    ball_position = plant.GetPositions(plant_context, ball)
-    return ball_position
+    # Get ball position and velocity
+    ball_position = plant.GetPositions(plant_context, ball)[4:]
+    ball_velocity = plant.GetVelocities(plant_context, ball)[3:]
+
+    # Determine the distance the ball travels
+    path = ball_flight_path(ball_position, ball_velocity)
+    land_location = path[-1, :2]
+    distance = np.linalg.norm(land_location)  # Absolute distance from origin
+    # If the ball is traveling backwards, return a negative distance
+    if land_location[0] < 0:
+        return -distance
+    # If the ball is foul (angle > +/- 45 degrees), return half the distance
+    if np.abs(np.arctan(land_location[1] / land_location[0])) > np.pi / 4:
+        return distance / 2
+    # If the ball is fair, return the distance
+    return distance
