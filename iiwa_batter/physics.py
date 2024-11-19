@@ -55,7 +55,7 @@ def ball_flight_path(initial_position, initial_velocity, timestep=1e-2):
 
     state = (np.array(initial_position), np.array(initial_velocity), 0.0)
     while state[0][2] > 0:
-        state = step(state)
+        state = step(state, timestep)
         positions.append(state[0])
 
     return np.array(positions)

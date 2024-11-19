@@ -83,13 +83,15 @@ def convert_to_radians(robot_constraints: dict) -> dict:
     return new_dict
 
 
-def scale_torque_limits(robot_constraints: dict) -> dict:
-    target_robot = "iiwa14"
+def scale_torque_limits(robot_constraints: dict, target_robot="iiwa14", ignored_robots=["slugger"]) -> dict:
     original_torque_constraints = robot_constraints[target_robot]["torque"]
 
     new_dict = {}
     for robot, values in robot_constraints.items():
         if robot == target_robot:
+            new_dict[robot] = values
+            continue
+        elif robot in ignored_robots:
             new_dict[robot] = values
             continue
 
