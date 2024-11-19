@@ -8,6 +8,8 @@ from pydrake.all import (
 from iiwa_batter import PITCH_TIMESTEP, PACKAGE_ROOT
 from iiwa_batter.physics import feet_to_meters, mph_to_mps, PLATE_OFFSET_Y, PITCH_START_X, PITCH_START_Z, STRIKE_ZONE_Z
 
+FLIGHT_TIME_MULTIPLE = 1.04 # Extra time to allow the ball to pass through the strike zone
+
 
 def make_model_directive(initial_joint_positions, dt=PITCH_TIMESTEP):
     # We're pitchin the ball from +x to -x
