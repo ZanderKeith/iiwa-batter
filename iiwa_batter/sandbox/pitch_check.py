@@ -5,7 +5,7 @@ from pydrake.all import (
     Simulator,
 )
 
-from iiwa_batter import PACKAGE_ROOT, PITCH_DT
+from iiwa_batter import NUM_JOINTS, PACKAGE_ROOT, PITCH_DT
 from iiwa_batter.physics import (
     PITCH_START_X,
     PITCH_START_Z,
@@ -18,7 +18,7 @@ FLIGHT_TIME_MULTIPLE = (
 )
 
 
-def make_model_directive(dt=PITCH_DT):
+def make_model_directive(dt=PITCH_DT, model_urdf="iiwa14_limitless"):
     # We're pitchin the ball from +x to -x
     # The robot is sitting next to the origin
 
@@ -29,7 +29,7 @@ def make_model_directive(dt=PITCH_DT):
 directives:
 - add_model:
     name: iiwa
-    file: file://{PACKAGE_ROOT}/assets/iiwa14_limitless.urdf
+    file: file://{PACKAGE_ROOT}/assets/{model_urdf}.urdf
     default_joint_positions:
         iiwa_joint_1: [0]
         iiwa_joint_2: [0]
@@ -91,13 +91,20 @@ plant_config:
     return model_directive
 
 
-def run_pitch_check(meshcat, record_time, pitch_velocity, save_time=0.45, dt=PITCH_DT):
+def run_pitch_check(
+    meshcat,
+    record_time,
+    pitch_velocity,
+    save_time=0.45,
+    dt=PITCH_DT,
+    model_urdf="iiwa14_limitless",
+):
     if meshcat is not None:
         meshcat.Delete()
 
     builder = DiagramBuilder()
 
-    model_directive = make_model_directive(dt)
+    model_directive = make_model_directive(dt, model_urdf)
 
     scenario = LoadScenario(data=model_directive)
     station = builder.AddSystem(MakeHardwareStation(scenario, meshcat))
@@ -107,7 +114,7 @@ def run_pitch_check(meshcat, record_time, pitch_velocity, save_time=0.45, dt=PIT
 
     # Just turn off the torque for the time being
     station_context = station.GetMyContextFromRoot(context)
-    station.GetInputPort("iiwa.torque").FixValue(station_context, [0] * 7)
+    station.GetInputPort("iiwa.torque").FixValue(station_context, [0] * NUM_JOINTS)
 
     # Set initial velocity of the ball
     plant = station.GetSubsystemByName("plant")

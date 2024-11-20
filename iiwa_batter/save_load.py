@@ -28,7 +28,7 @@ def save_trajectory(
     if not os.path.exists(save_directory):
         os.makedirs(save_directory)
 
-    with open(f"{save_directory}/best_trajectory.dill", "wb") as f:
+    with open(f"{save_directory}/trajectory.dill", "wb") as f:
         dill.dump((best_control_vector, best_reward, rewards, reward_differences), f)
 
 
@@ -48,5 +48,5 @@ def load_trajectory(trajectory_settings, name):
         The best control vector, best reward, rewards, and reward differences
     """
     load_directory = trajectory_dir(trajectory_settings, name)
-    with open(f"{load_directory}/best_trajectory.dill", "rb") as f:
+    with open(f"{load_directory}/trajectory.dill", "rb") as f:
         return dill.load(f)
