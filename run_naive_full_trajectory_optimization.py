@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from iiwa_batter import PACKAGE_ROOT, CONTROL_DT, CONTACT_DT, PITCH_DT
 from iiwa_batter.robot_constraints.get_joint_constraints import JOINT_CONSTRAINTS
 from iiwa_batter.physics import find_ball_initial_velocity
+from iiwa_batter.save_load import trajectory_dir, save_trajectory
 
 from iiwa_batter.swing_optimization.full_trajectory import setup_simulator, initialize_control_vector, stochastic_optimization_full_trajectory
 
@@ -14,6 +15,7 @@ trajectory_settings = {
     "pitch_speed_mph": 90,
     "target_position": [0, 0, 0.6],
 }
+optimization_name = "naive_full_trajectory"
 
 robot = trajectory_settings["robot"]
 pitch_speed_mph = trajectory_settings["pitch_speed_mph"]
@@ -36,7 +38,7 @@ best_reward = -np.inf
 rewards = []
 reward_differences = []
 for i in range(10):
-    control_vector, reward, reward_difference = stochastic_optimization_full_trajectory(simulator, station, robot_constraints, control_vector, control_timesteps, ball_initial_velocity, time_of_flight)
+    updated_control_vector, reward, reward_difference = stochastic_optimization_full_trajectory(simulator, station, robot_constraints, control_vector, control_timesteps, ball_initial_velocity, time_of_flight)
     rewards.append(reward)
     reward_differences.append(reward_difference)
     if reward > best_reward:
@@ -44,19 +46,13 @@ for i in range(10):
         best_reward = reward
     if i % 10 == 0:
         print(f"Iteration {i}: {reward}")
+    control_vector = updated_control_vector
 
-print(best_reward)
+print(f"Best reward: {best_reward}")
 print(f"Difference variance: {np.var(reward_differences)}")
-
-# Save results
-save_directory = f"{PACKAGE_ROOT}/swing_optimization/trajectories/naive_full_trajectory/{robot}_{pitch_speed_mph}mph_y{target_position_y}_z{target_position_z}"
-if not os.path.exists(save_directory):
-    os.makedirs(save_directory)
 
 # Plot rewards over iteration
 plt.plot(rewards)
-plt.savefig(f"{save_directory}/reward_plot.png")
+plt.savefig(f"{trajectory_dir(trajectory_settings, optimization_name)}/reward_plot.png")
 
-# Save the best control vector, the rewards, and the reward differences
-with open(f"{save_directory}/best_trajectory.dill", "wb") as f:
-   dill.dump((best_control_vector, best_reward, rewards, reward_differences), f)
+save_trajectory(trajectory_settings, optimization_name, best_control_vector, best_reward, rewards, reward_differences)

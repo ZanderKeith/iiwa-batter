@@ -6,12 +6,13 @@ from pydrake.all import (
     Simulator,
 )
 
-from iiwa_batter import CONTACT_DT, PITCH_DT
+from iiwa_batter import CONTACT_DT, NUM_JOINTS, PITCH_DT
 from iiwa_batter.physics import PITCH_START_POSITION, ball_flight_path
 from iiwa_batter.sandbox.pitch_check import FLIGHT_TIME_MULTIPLE, make_model_directive
 
 # This actually works somewhat well... I'm surprised it isn't unbearably slow
 # This shall be the backup plan in case the more 'intelligently designed' optimization doesn't work
+
 
 def interpolate_trajectory(simulation_timesteps, trajectory):
     """Given the timesteps of the simulation and a torque trajectory, use rectilinear interpolation to have a torque value for each timestep.
@@ -32,13 +33,19 @@ def interpolate_trajectory(simulation_timesteps, trajectory):
         if i < len(trajectory) - 1:
             upper_bound = original_timesteps[i + 1]
         else:
-            upper_bound = np.inf # Last timestep, no upper bound
+            upper_bound = np.inf  # Last timestep, no upper bound
 
-        intermediate_torques = {time: trajectory[lower_bound] for time in simulation_timesteps if lower_bound <= time < upper_bound}
-    
+        intermediate_torques = {
+            time: trajectory[lower_bound]
+            for time in simulation_timesteps
+            if lower_bound <= time < upper_bound
+        }
+
         interpolated_trajectory.update(intermediate_torques)
 
-    interpolated_trajectory.update({original_timesteps[-1]: trajectory[original_timesteps[-1]]})
+    interpolated_trajectory.update(
+        {original_timesteps[-1]: trajectory[original_timesteps[-1]]}
+    )
 
     return interpolated_trajectory
 
@@ -98,7 +105,7 @@ def stochastic_optimization_full_trajectory(
     control_timesteps,
     ball_initial_velocity,
     time_of_flight,
-    learning_rate=0.01,
+    learning_rate=0.5,
 ):
     """Run stochastic optimization to find the best control vector for the full swing trajectory.
 
@@ -216,7 +223,7 @@ def run_full_trajectory(
 
     context = simulator.get_context()
     station_context = station.GetMyContextFromRoot(context)
-    station.GetInputPort("iiwa.torque").FixValue(station_context, [0] * 7)
+    station.GetInputPort("iiwa.torque").FixValue(station_context, [0] * NUM_JOINTS)
     simulator.AdvanceTo(0)
     plant = station.GetSubsystemByName("plant")
     plant_context = plant.GetMyContextFromRoot(context)
@@ -235,7 +242,7 @@ def run_full_trajectory(
     # Set initial iiwa state
     iiwa = plant.GetModelInstanceByName("iiwa")
     plant.SetPositions(plant_context, iiwa, initial_joint_positions)
-    plant.SetVelocities(plant_context, iiwa, [0] * 7)
+    plant.SetVelocities(plant_context, iiwa, [0] * NUM_JOINTS)
 
     # Make the trajectory
 

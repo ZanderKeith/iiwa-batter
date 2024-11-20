@@ -1,10 +1,10 @@
 import numpy as np
 
+from iiwa_batter import CONTROL_DT, PITCH_DT
 from iiwa_batter.swing_optimization.full_trajectory import (
     interpolate_trajectory,
     make_torque_trajectory,
 )
-from iiwa_batter import PITCH_DT, CONTROL_DT
 
 
 def test_make_torque_trajectory():
@@ -36,6 +36,7 @@ def test_interpolate_trajectory_coarse():
     assert np.all(new_trajectory[1.5] == np.array([1, 1, 1]))
     assert np.all(new_trajectory[4] == np.array([4, 4, 4]))
 
+
 def test_interpolate_trajectory_fine():
     control_timesteps = np.arange(0, 0.1, CONTROL_DT)
     simulation_timesteps = np.arange(0, 0.1, PITCH_DT)
@@ -46,10 +47,16 @@ def test_interpolate_trajectory_fine():
 
     assert len(new_trajectory) == len(simulation_timesteps)
 
-    for i in range(len(control_timesteps)-1):
+    for i in range(len(control_timesteps) - 1):
         lower_bound = control_timesteps[i]
         upper_bound = control_timesteps[i + 1]
 
-        intermediate_torques = [new_trajectory[time] for time in new_trajectory.keys() if lower_bound <= time < upper_bound]
+        intermediate_torques = [
+            new_trajectory[time]
+            for time in new_trajectory.keys()
+            if lower_bound <= time < upper_bound
+        ]
 
-        assert np.all(np.array(intermediate_torques) == original_trajectory[lower_bound])
+        assert np.all(
+            np.array(intermediate_torques) == original_trajectory[lower_bound]
+        )

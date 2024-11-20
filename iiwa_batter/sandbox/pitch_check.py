@@ -91,9 +91,7 @@ plant_config:
     return model_directive
 
 
-def run_pitch_check(
-    meshcat, record_time, pitch_velocity, save_time=0.45, dt=PITCH_DT
-):
+def run_pitch_check(meshcat, record_time, pitch_velocity, save_time=0.45, dt=PITCH_DT):
     if meshcat is not None:
         meshcat.Delete()
 
