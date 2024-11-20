@@ -27,6 +27,7 @@ def run_full_trajectory(
     initial_joint_positions,
     initial_ball_state_arrays,
     time_of_flight,
+    robot_constraints,
     torque_trajectory: dict[float, np.ndarray],
 ):
     if meshcat is not None:
@@ -85,6 +86,9 @@ def run_full_trajectory(
         # Check for self-collision... eventually
         # station.GetOutputPort("contact_results").Eval(station_context)
         # contact_results = station.GetOutputPort("contact_results")
+
+        # Enforce joint position and velocity limits... eventually
+        # joint_positions = plant.GetPositions(plant_context, iiwa)
 
         # Record the distance between the sweet spot of the bat and the ball at the point when the ball passes through the strike zone
         # to include in our loss function
