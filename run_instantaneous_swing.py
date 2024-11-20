@@ -2,7 +2,7 @@ import json
 import numpy as np
 from pydrake.geometry import StartMeshcat
 
-from iiwa_batter import PACKAGE_ROOT, CONTACT_TIMESTEP
+from iiwa_batter import PACKAGE_ROOT, CONTACT_DT
 from iiwa_batter.swing_optimization.instantaneous_swing import run_instantaneous_swing
 from iiwa_batter.robot_constraints.get_joint_constraints import JOINT_CONSTRAINTS
 
@@ -44,7 +44,7 @@ parameter_bounds = {
 
 def swing_optimization(joint1, joint2, joint3, joint4, joint5, joint6, joint7):
     plate_iiwa_velocity = np.array([joint1, joint2, joint3, joint4, joint5, joint6, joint7])
-    return run_instantaneous_swing(None, plate_iiwa_position, plate_iiwa_velocity, plate_ball_state, CONTACT_TIMESTEP)
+    return run_instantaneous_swing(None, plate_iiwa_position, plate_iiwa_velocity, plate_ball_state, CONTACT_DT)
 
 optimizer = BayesianOptimization(
     f=swing_optimization,
