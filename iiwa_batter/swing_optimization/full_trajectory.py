@@ -2,6 +2,7 @@ import numpy as np
 from manipulation.station import LoadScenario, MakeHardwareStation
 from pydrake.all import (
     DiagramBuilder,
+    Diagram,
     Simulator,
 )
 
@@ -21,9 +22,26 @@ def find_nearest(array, value):
 def interpolate_trajectory(timesteps, trajectory):
     return {find_nearest(timesteps, time): phase for time, phase in trajectory.items()}
 
+def setup_simulator(dt=CONTACT_TIMESTEP, meshcat=None):
+    builder = DiagramBuilder()
+    model_directive = make_model_directive(dt)
+    scenario = LoadScenario(data=model_directive)
+    station = builder.AddSystem(MakeHardwareStation(scenario, meshcat))
+    diagram = builder.Build()
+    simulator = Simulator(diagram)
+
+    return simulator, station
+
+def reset_simulator(simulator: Simulator):
+    context = simulator.get_mutable_context()
+    context.SetTime(0)
+    simulator.Initialize()
+
 
 def run_full_trajectory(
     meshcat,
+    simulator: Simulator,
+    station: Diagram,
     initial_joint_positions,
     initial_ball_state_arrays,
     time_of_flight,
@@ -32,14 +50,6 @@ def run_full_trajectory(
 ):
     if meshcat is not None:
         meshcat.Delete()
-
-    builder = DiagramBuilder()
-
-    model_directive = make_model_directive(initial_joint_positions, CONTACT_TIMESTEP)
-    scenario = LoadScenario(data=model_directive)
-    station = builder.AddSystem(MakeHardwareStation(scenario, meshcat))
-    diagram = builder.Build()
-    simulator = Simulator(diagram)
     context = simulator.get_context()
 
     station_context = station.GetMyContextFromRoot(context)

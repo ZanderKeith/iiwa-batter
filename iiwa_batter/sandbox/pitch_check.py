@@ -18,13 +18,12 @@ FLIGHT_TIME_MULTIPLE = (
 )
 
 
-def make_model_directive(initial_joint_positions, dt=PITCH_TIMESTEP):
+def make_model_directive(dt=PITCH_TIMESTEP):
     # We're pitchin the ball from +x to -x
     # The robot is sitting next to the origin
 
-    base_rotation_deg = np.rad2deg(
-        np.pi / 4
-    )  # Rotates the base towards the plate just a little so the first joint doesn't max out before crossing the strike zone
+    # Rotates the base towards the plate just a little so the first joint doesn't max out before crossing the strike zone
+    base_rotation_deg = np.rad2deg(np.pi / 4)  
 
     model_directive = f"""
 directives:
@@ -32,13 +31,13 @@ directives:
     name: iiwa
     file: file://{PACKAGE_ROOT}/assets/iiwa14_limitless.urdf
     default_joint_positions:
-        iiwa_joint_1: [{initial_joint_positions[0]}]
-        iiwa_joint_2: [{initial_joint_positions[1]}]
-        iiwa_joint_3: [{initial_joint_positions[2]}]
-        iiwa_joint_4: [{initial_joint_positions[3]}]
-        iiwa_joint_5: [{initial_joint_positions[4]}]
-        iiwa_joint_6: [{initial_joint_positions[5]}]
-        iiwa_joint_7: [{initial_joint_positions[6]}]
+        iiwa_joint_1: [0]
+        iiwa_joint_2: [0]
+        iiwa_joint_3: [0]
+        iiwa_joint_4: [0]
+        iiwa_joint_5: [0]
+        iiwa_joint_6: [0]
+        iiwa_joint_7: [0]
 - add_weld:
     parent: world
     child: iiwa::base
@@ -100,7 +99,7 @@ def run_pitch_check(
 
     builder = DiagramBuilder()
 
-    model_directive = make_model_directive([0] * 8, dt)
+    model_directive = make_model_directive(dt)
 
     scenario = LoadScenario(data=model_directive)
     station = builder.AddSystem(MakeHardwareStation(scenario, meshcat))
