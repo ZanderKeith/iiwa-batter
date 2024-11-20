@@ -5,7 +5,7 @@ from pydrake.all import (
     Simulator,
 )
 
-from iiwa_batter import PACKAGE_ROOT, PITCH_TIMESTEP
+from iiwa_batter import PACKAGE_ROOT, PITCH_DT
 from iiwa_batter.physics import (
     PITCH_START_X,
     PITCH_START_Z,
@@ -18,7 +18,7 @@ FLIGHT_TIME_MULTIPLE = (
 )
 
 
-def make_model_directive(dt=PITCH_TIMESTEP):
+def make_model_directive(dt=PITCH_DT):
     # We're pitchin the ball from +x to -x
     # The robot is sitting next to the origin
 
@@ -92,7 +92,7 @@ plant_config:
 
 
 def run_pitch_check(
-    meshcat, record_time, pitch_velocity, save_time=0.45, dt=PITCH_TIMESTEP
+    meshcat, record_time, pitch_velocity, save_time=0.45, dt=PITCH_DT
 ):
     if meshcat is not None:
         meshcat.Delete()

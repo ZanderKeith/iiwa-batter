@@ -4,7 +4,7 @@ from iiwa_batter.swing_optimization.full_trajectory import (
     interpolate_trajectory,
     make_torque_trajectory,
 )
-from iiwa_batter import PITCH_TIMESTEP, CONTROL_TIMESTEP
+from iiwa_batter import PITCH_DT, CONTROL_DT
 
 
 def test_make_torque_trajectory():
@@ -37,8 +37,8 @@ def test_interpolate_trajectory_coarse():
     assert np.all(new_trajectory[4] == np.array([4, 4, 4]))
 
 def test_interpolate_trajectory_fine():
-    control_timesteps = np.arange(0, 0.1, CONTROL_TIMESTEP)
-    simulation_timesteps = np.arange(0, 0.1, PITCH_TIMESTEP)
+    control_timesteps = np.arange(0, 0.1, CONTROL_DT)
+    simulation_timesteps = np.arange(0, 0.1, PITCH_DT)
 
     control_vector = np.concatenate([np.array([-1]), range(len(control_timesteps))])
     original_trajectory = make_torque_trajectory(control_vector, 1, control_timesteps)

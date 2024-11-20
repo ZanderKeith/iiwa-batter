@@ -5,7 +5,7 @@ from pydrake.all import (
     Simulator,
 )
 
-from iiwa_batter import CONTACT_TIMESTEP
+from iiwa_batter import CONTACT_DT
 from iiwa_batter.physics import ball_flight_path
 from iiwa_batter.sandbox.pitch_check import make_model_directive
 
@@ -19,7 +19,7 @@ def run_instantaneous_swing(
     plate_joint_positions,
     plate_joint_velocities,
     plate_ball_state_arrays: tuple[np.ndarray, np.ndarray],
-    dt=CONTACT_TIMESTEP,
+    dt=CONTACT_DT,
 ):
     if meshcat is not None:
         meshcat.Delete()

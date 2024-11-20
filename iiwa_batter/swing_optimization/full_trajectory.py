@@ -6,7 +6,7 @@ from pydrake.all import (
     Simulator,
 )
 
-from iiwa_batter import CONTACT_TIMESTEP, PITCH_TIMESTEP
+from iiwa_batter import CONTACT_DT, PITCH_DT
 from iiwa_batter.physics import PITCH_START_POSITION, ball_flight_path
 from iiwa_batter.sandbox.pitch_check import FLIGHT_TIME_MULTIPLE, make_model_directive
 
@@ -43,7 +43,7 @@ def interpolate_trajectory(simulation_timesteps, trajectory):
     return interpolated_trajectory
 
 
-def setup_simulator(dt=CONTACT_TIMESTEP, meshcat=None):
+def setup_simulator(dt=CONTACT_DT, meshcat=None):
     builder = DiagramBuilder()
     model_directive = make_model_directive(dt)
     scenario = LoadScenario(data=model_directive)
@@ -176,7 +176,7 @@ def stochastic_optimization_full_trajectory(
 
     perturbed_control_vector = original_control_vector + perturbed_vector
     perturbed_torque_trajectory = make_torque_trajectory(
-        perturbed_control_vector, robot_constraints, control_timesteps
+        perturbed_control_vector, num_joints, control_timesteps
     )
 
     reset_simulator(simulator)
@@ -240,7 +240,7 @@ def run_full_trajectory(
     # Make the trajectory
 
     simulation_duration = time_of_flight * FLIGHT_TIME_MULTIPLE
-    timebase = np.arange(0, simulation_duration, PITCH_TIMESTEP)
+    timebase = np.arange(0, simulation_duration, PITCH_DT)
     interpolated_trajectory = interpolate_trajectory(timebase, torque_trajectory)
 
     # Run the pitch

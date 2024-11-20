@@ -1,9 +1,9 @@
-import json
-import numpy as np
-from pydrake.geometry import StartMeshcat
+import os
 import dill
+import numpy as np
+import matplotlib.pyplot as plt
 
-from iiwa_batter import PACKAGE_ROOT, CONTROL_TIMESTEP, CONTACT_TIMESTEP, PITCH_TIMESTEP
+from iiwa_batter import PACKAGE_ROOT, CONTROL_DT, CONTACT_DT, PITCH_DT
 from iiwa_batter.robot_constraints.get_joint_constraints import JOINT_CONSTRAINTS
 from iiwa_batter.physics import find_ball_initial_velocity
 
@@ -25,9 +25,9 @@ robot_constraints = JOINT_CONSTRAINTS[robot]
 ball_initial_velocity, time_of_flight = find_ball_initial_velocity(trajectory_settings["pitch_speed_mph"], 
                                                          trajectory_settings["target_position"])
 
-control_timesteps = np.arange(0, time_of_flight, CONTROL_TIMESTEP)
+control_timesteps = np.arange(0, time_of_flight, CONTROL_DT)
 
-simulator, station = setup_simulator(dt=PITCH_TIMESTEP)
+simulator, station = setup_simulator(dt=PITCH_DT)
 
 np.random.seed(0)
 control_vector = initialize_control_vector(robot_constraints, len(control_timesteps))
@@ -47,13 +47,14 @@ for i in range(10):
 
 print(best_reward)
 print(f"Difference variance: {np.var(reward_differences)}")
-import matplotlib.pyplot as plt
+
+# Save results
+save_directory = f"{PACKAGE_ROOT}/swing_optimization/trajectories/naive_full_trajectory/{robot}_{pitch_speed_mph}mph_y{target_position_y}_z{target_position_z}"
+if not os.path.exists(save_directory):
+    os.makedirs(save_directory)
 
 # Plot rewards over iteration
 plt.plot(rewards)
-
-save_directory = f"{PACKAGE_ROOT}/swing_optimization/trajectories/naive_full_trajectory/{robot}_{pitch_speed_mph}mph_y{target_position_y}_z{target_position_z}"
-
 plt.savefig(f"{save_directory}/reward_plot.png")
 
 # Save the best control vector, the rewards, and the reward differences
