@@ -2,6 +2,7 @@ import json
 import numpy as np
 from pydrake.geometry import StartMeshcat
 import dill
+import gc
 
 from iiwa_batter import PACKAGE_ROOT, CONTROL_TIMESTEP
 from iiwa_batter.robot_constraints.get_joint_constraints import JOINT_CONSTRAINTS
@@ -82,6 +83,9 @@ for i in range(1000):
     if reward > best_reward:
         best_control_vector = control_vector
         best_reward = reward
+    if i % 20 == 0:
+        print(f"Iteration {i}: {reward}")
+        gc.collect()
 
 print(best_reward)
 print(f"Difference variance: {np.var(reward_differences)}")
