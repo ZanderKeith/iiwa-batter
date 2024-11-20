@@ -13,13 +13,6 @@ from iiwa_batter.sandbox.pitch_check import FLIGHT_TIME_MULTIPLE, make_model_dir
 # This actually works somewhat well... I'm surprised it isn't unbearably slow
 # This shall be the backup plan in case the more 'intelligently designed' optimization doesn't work
 
-
-def find_nearest(array, value):
-    array = np.asarray(array)
-    idx = (np.abs(array - value)).argmin()
-    return array[idx]
-
-
 def interpolate_trajectory(simulation_timesteps, trajectory):
     """Given the timesteps of the simulation and a torque trajectory, use rectilinear interpolation to have a torque value for each timestep.
 
@@ -31,10 +24,21 @@ def interpolate_trajectory(simulation_timesteps, trajectory):
         The torque trajectory to interpolate. Keys are times, values are torques.
     """
 
+    original_timesteps = np.array(list(trajectory.keys()))
+
     interpolated_trajectory = {}
-    for t in simulation_timesteps:
-        nearest_t = find_nearest(list(trajectory.keys()), t)
-        interpolated_trajectory[t] = trajectory[nearest_t]
+    for i in range(len(trajectory)):
+        lower_bound = original_timesteps[i]
+        if i < len(trajectory) - 1:
+            upper_bound = original_timesteps[i + 1]
+        else:
+            upper_bound = np.inf # Last timestep, no upper bound
+
+        intermediate_torques = {time: trajectory[lower_bound] for time in simulation_timesteps if lower_bound <= time < upper_bound}
+    
+        interpolated_trajectory.update(intermediate_torques)
+
+    interpolated_trajectory.update({original_timesteps[-1]: trajectory[original_timesteps[-1]]})
 
     return interpolated_trajectory
 
@@ -134,7 +138,7 @@ def stochastic_optimization_full_trajectory(
 
     # Determine the loss from this control vector
     torque_trajectory = make_torque_trajectory(
-        original_control_vector, robot_constraints, control_timesteps
+        original_control_vector, num_joints, control_timesteps
     )
     reset_simulator(simulator)
     original_reward = run_full_trajectory(
