@@ -69,7 +69,7 @@ def ball_flight_path(initial_position, initial_velocity, timestep=1e-2):
     return np.array(positions)
 
 
-def find_initial_velocity(
+def find_ball_initial_velocity(
     ball_horizontal_speed_mph,
     ball_target_position: np.array,
     ball_initial_position=PITCH_START_POSITION,

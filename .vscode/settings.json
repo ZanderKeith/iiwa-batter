@@ -1,0 +1,7 @@
+{
+    "python.testing.pytestArgs": [
+        "iiwa_batter"
+    ],
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestEnabled": true
+}

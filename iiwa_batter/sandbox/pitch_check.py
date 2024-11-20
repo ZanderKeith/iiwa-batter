@@ -23,7 +23,7 @@ def make_model_directive(dt=PITCH_TIMESTEP):
     # The robot is sitting next to the origin
 
     # Rotates the base towards the plate just a little so the first joint doesn't max out before crossing the strike zone
-    base_rotation_deg = np.rad2deg(np.pi / 4)  
+    base_rotation_deg = np.rad2deg(np.pi / 4)
 
     model_directive = f"""
 directives:
