@@ -489,6 +489,21 @@ files = [
 ]
 
 [[package]]
+name = "dill"
+version = "0.3.9"
+description = "serialize all of Python"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "dill-0.3.9-py3-none-any.whl", hash = "sha256:468dff3b89520b474c0397703366b7b95eebe6303f108adf9b19da1f702be87a"},
+    {file = "dill-0.3.9.tar.gz", hash = "sha256:81aa267dddf68cbfe8029c42ca9ec6a4ab3b22371d1c450abc54422577b4512c"},
+]
+
+[package.extras]
+graph = ["objgraph (>=1.7.2)"]
+profile = ["gprof2dot (>=2022.7.29)"]
+
+[[package]]
 name = "distlib"
 version = "0.3.9"
 description = "Distribution utilities"
@@ -3608,4 +3623,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "3.11.10"
-content-hash = "7c7ba1949a243f3756f0e3175e3658b952a0422ff7dc20bcac008fd4bc14e1a9"
+content-hash = "5b73d3f56e652808cb42fa2d89e428a7b408c7aebba8060704d551eb6f398874"
