@@ -9,7 +9,7 @@ from iiwa_batter.save_load import trajectory_dir, save_trajectory
 from iiwa_batter.swing_optimization.full_trajectory import setup_simulator, initialize_control_vector, stochastic_optimization_full_trajectory
 
 trajectory_settings = {
-    "robot": "kr6r900",
+    "robot": "iiwa14",
     "pitch_speed_mph": 90,
     "target_position": [0, 0, 0.6],
 }
@@ -35,14 +35,13 @@ best_control_vector = control_vector
 best_reward = -np.inf
 rewards = []
 reward_differences = []
-for i in range(10):
+for i in range(10000):
     updated_control_vector, reward, reward_difference = stochastic_optimization_full_trajectory(simulator, station, robot_constraints, control_vector, control_timesteps, ball_initial_velocity, time_of_flight)
     rewards.append(reward)
     reward_differences.append(reward_difference)
     if reward > best_reward:
         best_control_vector = control_vector
         best_reward = reward
-    if i % 10 == 0:
         print(f"Iteration {i}: {reward}")
     control_vector = updated_control_vector
 

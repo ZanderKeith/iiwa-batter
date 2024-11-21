@@ -105,7 +105,7 @@ def stochastic_optimization_full_trajectory(
     control_timesteps,
     ball_initial_velocity,
     time_of_flight,
-    learning_rate=0.5,
+    learning_rate=1,
 ):
     """Run stochastic optimization to find the best control vector for the full swing trajectory.
 
