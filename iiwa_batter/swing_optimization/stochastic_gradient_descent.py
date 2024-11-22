@@ -1,5 +1,3 @@
-
-
 def reward(simulator, station):
     # Calculate reward
     # If ball position is negative, we missed the ball and should penalize

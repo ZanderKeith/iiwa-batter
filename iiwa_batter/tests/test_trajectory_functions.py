@@ -1,7 +1,7 @@
 import numpy as np
 
 from iiwa_batter import CONTROL_DT, PITCH_DT
-from iiwa_batter.swing_optimization.full_trajectory import (
+from iiwa_batter.swing_optimization.trajectory_helpers import (
     interpolate_trajectory,
     make_torque_trajectory,
 )

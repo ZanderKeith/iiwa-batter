@@ -10,16 +10,15 @@ from pydrake.all import (
 )
 
 from iiwa_batter import (
-    PACKAGE_ROOT,
-    NUM_JOINTS,
     CONTACT_DT,
+    NUM_JOINTS,
+    PACKAGE_ROOT,
     PITCH_DT,
 )
-
 from iiwa_batter.physics import (
-    PLATE_OFFSET_Y,
     PITCH_START_X,
     PITCH_START_Z,
+    PLATE_OFFSET_Y,
     STRIKE_ZONE_Z,
 )
 
@@ -91,16 +90,19 @@ plant_config:
 
     return model_directive
 
+
 class TorqueTrajectorySystem(LeafSystem):
     """System that outputs a torque trajectory for the robot to follow.
     Uses rectilinear interpolation to determine the torque at each timestep.
     """
+
     def __init__(self, torque_trajectory: dict[float, np.ndarray]):
         LeafSystem.__init__(self)
         self.DeclareVectorOutputPort(
             "trajectory_torque", BasicVector(NUM_JOINTS), self.calculate_torque
         )
         self.update_trajectory(torque_trajectory)
+        self.set_name("torque_trajectory_system")
 
     def calculate_torque(self, context, output):
         time = context.get_time()
@@ -122,12 +124,34 @@ class EnforceJointLimitSystem(LeafSystem):
     Might be able to get away with doing this in the 'collision check' loop instead of its own leaf system... to be determined.
     """
 
-def setup_simulator(dt=CONTACT_DT, meshcat=None):
+
+def setup_simulator(torque_trajectory, dt=CONTACT_DT, meshcat=None, plot_diagram=False):
+    """Set up the simulator to run a swing given a torque trajectory.
+
+    Parameters
+    ----------
+    torque_trajectory : dict[float, np.ndarray]
+        A dictionary of timesteps and the torques to be applied at those timesteps.
+    dt : float, optional
+        The timestep to use for the simulation, by default CONTACT_DT
+    meshcat : Meshcat, optional
+        The meshcat instance to use for visualization, by default None
+    plot_diagram : bool, optional
+        Whether to plot the diagram, by default False
+
+    Returns
+    -------
+    Simulator, Diagram
+        The simulator and diagram objects (need them both later on)
+    """
+
     builder = DiagramBuilder()
     model_directive = make_model_directive(dt)
     scenario = LoadScenario(data=model_directive)
     station = builder.AddSystem(MakeHardwareStation(scenario, meshcat))
-    trajectory_torque_system = builder.AddSystem(TorqueTrajectorySystem())
+    trajectory_torque_system = builder.AddSystem(
+        TorqueTrajectorySystem(torque_trajectory)
+    )
 
     builder.Connect(
         trajectory_torque_system.get_output_port(0),
@@ -137,35 +161,100 @@ def setup_simulator(dt=CONTACT_DT, meshcat=None):
     diagram = builder.Build()
     simulator = Simulator(diagram)
 
-    pydot.graph_from_dot_data(diagram.GetGraphvizString(max_depth=2))[0].write_png(
-        f"{PACKAGE_ROOT}/notebook_images/simulation_diagram.png"
-    )
+    if plot_diagram:
+        pydot.graph_from_dot_data(diagram.GetGraphvizString(max_depth=2))[0].write_png(
+            f"{PACKAGE_ROOT}/tests/figures/simulation_diagram.png"
+        )
 
-    return simulator, station
+    return simulator, diagram
 
 
-def reset_simulator(simulator: Simulator):
-    context = simulator.get_mutable_context()
-    context.SetTime(0)
+def reset_simulator(simulator: Simulator, diagram: Diagram, new_torque_trajectory=None):
+    simulator_context = simulator.get_mutable_context()
+    simulator_context.SetTime(0)
+
+    if new_torque_trajectory is not None:
+        torque_trajectory_system = diagram.GetSubsystemByName(
+            "torque_trajectory_system"
+        )
+        torque_trajectory_system.update_trajectory(new_torque_trajectory)
+
     simulator.Initialize()
+
+
+def parse_simulation_state(simulator: Simulator, diagram: Diagram, system_name: str):
+    """Given a simulator and diagram, parse the state of either the iiwa or the ball in the diagram.
+
+    Parameters:
+    -----------
+    simulator : Simulator
+    diagram : Diagram
+    system_name : str
+        The name of the system to parse the state of (iiwa or ball)
+    """
+
+    station: Diagram = diagram.GetSubsystemByName("station")
+    plant: Diagram = station.GetSubsystemByName("plant")
+    simulator_context = simulator.get_context()
+    plant_context = plant.GetMyContextFromRoot(simulator_context)
+
+    if system_name == "iiwa":
+        iiwa = plant.GetModelInstanceByName("iiwa")
+        joint_positions = plant.GetPositions(plant_context, iiwa)
+        joint_velocities = plant.GetVelocities(plant_context, iiwa)
+        return joint_positions, joint_velocities
+    elif system_name == "ball":
+        ball = plant.GetModelInstanceByName("ball")
+        ball_position = plant.GetPositions(plant_context, ball)
+        ball_velocity = plant.GetVelocities(plant_context, ball)
+        return ball_position, ball_velocity
 
 
 def run_swing_simulation(
     simulator: Simulator,
-    station: Diagram,
+    diagram: Diagram,
     start_time,
     end_time,
     initial_joint_positions,
     initial_joint_velocities,
     initial_ball_position,
     initial_ball_velocity,
-    meshcat = None,
-    check_dt = PITCH_DT,
-    robot_constraints = None,
+    meshcat=None,
+    check_dt=PITCH_DT,
+    robot_constraints=None,
 ):
-    context = simulator.get_context()
-    plant = station.GetSubsystemByName("plant")
-    plant_context = plant.GetMyContextFromRoot(context)
+    """Run a swing simulation from start_time to end_time with the given initial conditions.
+
+    Parameters
+    ----------
+    simulator : Simulator
+        The simulator object to use for the simulation.
+    diagram : Diagram
+        The diagram object to use for the simulation. Expected to contain an instance of TorqueTrajectorySystem, with a torque trajectory already set.
+    start_time : float
+        The time to start the simulation.
+    end_time : float
+        The time to end the simulation. The actual final time will be at least this, but may be slightly longer to line up with the timestep.
+    initial_joint_positions : np.ndarray
+        The initial joint positions of the robot. MUST be of length NUM_JOINTS.
+    initial_joint_velocities : np.ndarray
+        The initial joint velocities of the robot. MUST be of length NUM_JOINTS.
+    initial_ball_position : np.ndarray
+        The initial position of the ball. MUST be of length 3.
+    initial_ball_velocity : np.ndarray
+        The initial velocity of the ball. MUST be of length 3.
+    meshcat : Meshcat, optional
+        The meshcat instance to use for visualization, by default None
+    check_dt : float, optional
+        The timestep to use for checking the simulation, by default PITCH_DT
+    robot_constraints : dict, optional
+        A dictionary of constraints to enforce on the robot, by default None
+    """
+
+    station: Diagram = diagram.GetSubsystemByName("station")
+    plant: Diagram = station.GetSubsystemByName("plant")
+    simulator_context = simulator.get_context()
+    plant_context = plant.GetMyContextFromRoot(simulator_context)
     # context.SetTime(start_time) # TODO: Is this needed?
     # plant_context.SetTime(start_time) # TODO: Is this needed?
     simulator.AdvanceTo(start_time)
@@ -191,7 +280,7 @@ def run_swing_simulation(
     plant.SetVelocities(plant_context, iiwa, [0] * NUM_JOINTS)
 
     # Run the pitch
-    timebase = np.arange(start_time, end_time+check_dt, check_dt)
+    timebase = np.arange(start_time, end_time + check_dt, check_dt)
 
     if meshcat is not None:
         meshcat.Delete()
@@ -222,5 +311,3 @@ def run_swing_simulation(
 
     if meshcat is not None:
         meshcat.PublishRecording()
-
-    return 

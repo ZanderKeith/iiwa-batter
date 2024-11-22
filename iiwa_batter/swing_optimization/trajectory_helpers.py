@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def interpolate_trajectory(simulation_timesteps, trajectory):
     """Given the timesteps of the simulation and a torque trajectory, use rectilinear interpolation to have a torque value for each timestep.
 
@@ -34,3 +35,14 @@ def interpolate_trajectory(simulation_timesteps, trajectory):
     )
 
     return interpolated_trajectory
+
+
+def make_torque_trajectory(control_vector, num_joints, trajectory_timesteps):
+    """Make a torque trajectory from a control vector. First num_joints values are the initial joint positions, the rest are the torques at each timestep."""
+    torque_trajectory = {}
+    for i in range(len(trajectory_timesteps)):
+        timestep = trajectory_timesteps[i]
+        torque_trajectory[timestep] = control_vector[
+            num_joints * (i + 1) : num_joints * (i + 2)
+        ]
+    return torque_trajectory
