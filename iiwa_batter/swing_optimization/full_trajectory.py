@@ -1,4 +1,5 @@
 import numpy as np
+import pydot
 from manipulation.station import LoadScenario, MakeHardwareStation
 from pydrake.all import (
     Diagram,
@@ -57,6 +58,10 @@ def setup_simulator(dt=CONTACT_DT, meshcat=None):
     station = builder.AddSystem(MakeHardwareStation(scenario, meshcat))
     diagram = builder.Build()
     simulator = Simulator(diagram)
+
+    pydot.graph_from_dot_data(station.GetGraphvizString(max_depth=2))[0].write_png(
+        "station_render.png"
+    )
 
     return simulator, station
 
@@ -259,6 +264,8 @@ def run_full_trajectory(
         station.GetInputPort("iiwa.torque").FixValue(
             station_context, interpolated_trajectory[t]
         )
+
+        station.Get
 
         try:
             simulator.AdvanceTo(t)

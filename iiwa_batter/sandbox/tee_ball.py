@@ -1,11 +1,12 @@
 import numpy as np
+import pydot
 from manipulation.station import LoadScenario, MakeHardwareStation
 from pydrake.all import (
     DiagramBuilder,
     Simulator,
 )
 
-from iiwa_batter import DEFAULT_TIMESTEP, PACKAGE_ROOT
+from iiwa_batter import PACKAGE_ROOT, PITCH_DT
 from iiwa_batter.physics import exit_velo_mph, parse_ball_state
 
 # TODO: just had a brainwave
@@ -65,7 +66,7 @@ def run_tee_ball(
     joint_positions=None,
     driving_torque=None,
     record_time=3.0,
-    dt=DEFAULT_TIMESTEP,
+    dt=PITCH_DT,
 ):
     if meshcat is not None:
         meshcat.Delete()
@@ -89,9 +90,10 @@ def run_tee_ball(
 
     # Record velocity of the ball
 
-    # import pydot
     # RenderDiagram(station, max_depth=1)
-    # pydot.graph_from_dot_data(station.GetGraphvizString(max_depth=1))[0].write_png('station_render.png')
+    pydot.graph_from_dot_data(station.GetGraphvizString(max_depth=2))[0].write_png(
+        "station_render.png"
+    )
 
     if meshcat is not None:
         meshcat.StartRecording()
