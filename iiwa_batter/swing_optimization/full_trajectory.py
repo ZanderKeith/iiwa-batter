@@ -259,7 +259,13 @@ def run_full_trajectory(
         station.GetInputPort("iiwa.torque").FixValue(
             station_context, interpolated_trajectory[t]
         )
-        simulator.AdvanceTo(t)
+
+        try:
+            simulator.AdvanceTo(t)
+        except RuntimeError:
+            # Got a wonky torque value, return a negative reward
+            print(f"Error on timestep {t} with torque\n{interpolated_trajectory[t]}")
+            return -100
 
         # Check for self-collision... eventually
         # station.GetOutputPort("contact_results").Eval(station_context)

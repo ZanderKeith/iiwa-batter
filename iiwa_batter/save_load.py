@@ -1,6 +1,8 @@
+import csv
 import os
 
 import dill
+import numpy as np
 
 from iiwa_batter import PACKAGE_ROOT
 
@@ -32,8 +34,8 @@ def save_trajectory(
         dill.dump((best_control_vector, best_reward, rewards, reward_differences), f)
 
 
-def load_trajectory(trajectory_settings, name):
-    """Load the best trajectory from a previous optimization run
+def load_control_vector_trajectory(trajectory_settings, name):
+    """Load the best control vector from a previous optimization run
 
     Parameters:
     ----------
@@ -47,6 +49,27 @@ def load_trajectory(trajectory_settings, name):
     tuple
         The best control vector, best reward, rewards, and reward differences
     """
+
     load_directory = trajectory_dir(trajectory_settings, name)
     with open(f"{load_directory}/trajectory.dill", "rb") as f:
         return dill.load(f)
+
+
+def load_dataviewer_trajectory(name):
+    # The file is a csv where the first row is the keys and the later rows are the values
+    string_trajectory = {}
+    with open(
+        f"{PACKAGE_ROOT}/swing_optimization/trajectories/{name}/torque_trajectory.csv",
+    ) as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            for key, value in row.items():
+                timestep = float(key)
+                torque = float(value)
+                if timestep not in string_trajectory:
+                    string_trajectory[timestep] = []
+                string_trajectory[timestep].append(torque)
+
+    trajectory = {key: np.array(value) for key, value in string_trajectory.items()}
+
+    return trajectory

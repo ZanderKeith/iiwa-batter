@@ -251,3 +251,11 @@ def write_assets(
 
     with open(f"{PACKAGE_ROOT}/assets/sweet_spot.sdf", "w+") as f:
         f.write(sweet_spot())
+
+
+if __name__ == "__main__":
+    bat_modulus = 1.2e12
+    ball_modulus = 6e9
+    mu_dynamic = 0.5
+    rigid_bat = False
+    write_assets(bat_modulus, ball_modulus, 1e-3, 1e-3, mu_dynamic, 0.014, rigid_bat)

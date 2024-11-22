@@ -35,6 +35,8 @@ best_control_vector = control_vector
 best_reward = -np.inf
 rewards = []
 reward_differences = []
+crash_iteration = 310 # The value of i when you do the traceback
+save_interval = 1000
 for i in range(10000):
     updated_control_vector, reward, reward_difference = stochastic_optimization_full_trajectory(simulator, station, robot_constraints, control_vector, control_timesteps, ball_initial_velocity, time_of_flight)
     rewards.append(reward)
@@ -45,11 +47,14 @@ for i in range(10000):
         print(f"Iteration {i}: {reward}")
     control_vector = updated_control_vector
 
+    if i % save_interval == 0 or i == crash_iteration-1:
+        save_trajectory(trajectory_settings, f"{optimization_name}_step_{i}", control_vector, reward, rewards, reward_differences)
+
 print(f"Best reward: {best_reward}")
 print(f"Difference variance: {np.var(reward_differences)}")
+
+save_trajectory(trajectory_settings, optimization_name, best_control_vector, best_reward, rewards, reward_differences)
 
 # Plot rewards over iteration
 plt.plot(rewards)
 plt.savefig(f"{trajectory_dir(trajectory_settings, optimization_name)}/reward_plot.png")
-
-save_trajectory(trajectory_settings, optimization_name, best_control_vector, best_reward, rewards, reward_differences)
