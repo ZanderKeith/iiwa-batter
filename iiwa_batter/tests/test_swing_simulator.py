@@ -3,7 +3,19 @@ from pydrake.all import (
     Diagram,
 )
 
-from iiwa_batter import NUM_JOINTS
+from iiwa_batter import (
+    PACKAGE_ROOT,
+    NUM_JOINTS,
+    CONTACT_DT,
+    PITCH_DT,
+    CONTROL_DT,
+)
+
+from iiwa_batter.physics import (
+    PITCH_START_POSITION,
+    find_ball_initial_velocity,
+)
+
 from iiwa_batter.swing_simulator import (
     parse_simulation_state,
     reset_simulator,
@@ -95,6 +107,75 @@ def test_torque_trajectory_change_on_reset():
     assert np.allclose(joint_velocities_b, joint_velocities_c)
 
 
-def compare_dt_final_state():
+def test_compare_simulation_dt_final_state():
     # See how the final state of the system changes with different values of dt
-    pass
+    # CONCLUSION: Final state is slightly different, but not by much.
+
+    initial_ball_velocity, _ = find_ball_initial_velocity(90, [0, 0, 0.6])
+
+    torque_trajectory = {0: np.array([50] * NUM_JOINTS), 0.2: np.array([100] * NUM_JOINTS)}
+    
+    simulator_contact_dt, diagram_contact_dt = setup_simulator(torque_trajectory=torque_trajectory, dt=CONTACT_DT)
+
+    run_swing_simulation(
+        simulator=simulator_contact_dt,
+        diagram=diagram_contact_dt,
+        start_time=0,
+        end_time=0.45,
+        initial_joint_positions=np.array([0] * NUM_JOINTS),
+        initial_joint_velocities=np.array([0] * NUM_JOINTS),
+        initial_ball_position=PITCH_START_POSITION,
+        initial_ball_velocity=initial_ball_velocity,
+    )
+
+    joint_positions_a, joint_velocities_a = parse_simulation_state(
+        simulator_contact_dt, diagram_contact_dt, "iiwa"
+    )
+
+    simulator_pitch_dt, diagram_pitch_dt = setup_simulator(torque_trajectory=torque_trajectory, dt=PITCH_DT)
+
+    run_swing_simulation(
+        simulator=simulator_pitch_dt,
+        diagram=diagram_pitch_dt,
+        start_time=0,
+        end_time=0.45,
+        initial_joint_positions=np.array([0] * NUM_JOINTS),
+        initial_joint_velocities=np.array([0] * NUM_JOINTS),
+        initial_ball_position=PITCH_START_POSITION,
+        initial_ball_velocity=initial_ball_velocity,
+    )
+
+    joint_positions_b, joint_velocities_b = parse_simulation_state(
+        simulator_pitch_dt, diagram_pitch_dt, "iiwa"
+    )
+
+    joint_positions_deg_a = np.rad2deg(joint_positions_a)
+    joint_positions_deg_b = np.rad2deg(joint_positions_b)
+    joint_velocities_deg_a = np.rad2deg(joint_velocities_a)
+    joint_velocities_deg_b = np.rad2deg(joint_velocities_b)
+
+    # Ok, so the joints are within 0.1 degrees of each other, and the velocities are within 1 degree/s of each other
+    assert np.allclose(joint_positions_deg_a, joint_positions_deg_b, atol=1e-1)
+    assert np.allclose(joint_velocities_deg_a, joint_velocities_deg_b, atol=1)
+
+    sweet_spot_position_a = parse_simulation_state(
+        simulator_contact_dt, diagram_contact_dt, "sweet_spot"
+    )
+    sweet_spot_position_b = parse_simulation_state(
+        simulator_pitch_dt, diagram_pitch_dt, "sweet_spot"
+    )
+
+    # The position of the sweet spot is also within 1 mm, which is good
+    assert np.allclose(sweet_spot_position_a, sweet_spot_position_b, atol=1e-3)
+
+    ball_position_a, ball_velocity_a = parse_simulation_state(
+        simulator_contact_dt, diagram_contact_dt, "ball"
+    )
+    ball_position_b, ball_velocity_b = parse_simulation_state(
+        simulator_pitch_dt, diagram_pitch_dt, "ball"
+    )
+
+    # Ball is within 1cm (mostly in the x direction) and velocity is within 1 mm/s
+    assert np.allclose(ball_position_a, ball_position_b, atol=1e-2)
+    assert np.allclose(ball_velocity_a, ball_velocity_b, atol=1e-3)
+

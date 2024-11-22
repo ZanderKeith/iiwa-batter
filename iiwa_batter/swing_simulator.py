@@ -190,7 +190,7 @@ def parse_simulation_state(simulator: Simulator, diagram: Diagram, system_name: 
     simulator : Simulator
     diagram : Diagram
     system_name : str
-        The name of the system to parse the state of (iiwa or ball)
+        The name of the system to parse the state of (iiwa, ball, or sweet_spot)
     """
 
     station: Diagram = diagram.GetSubsystemByName("station")
@@ -205,9 +205,16 @@ def parse_simulation_state(simulator: Simulator, diagram: Diagram, system_name: 
         return joint_positions, joint_velocities
     elif system_name == "ball":
         ball = plant.GetModelInstanceByName("ball")
-        ball_position = plant.GetPositions(plant_context, ball)
-        ball_velocity = plant.GetVelocities(plant_context, ball)
+        ball_position = plant.GetPositions(plant_context, ball)[4:]
+        ball_velocity = plant.GetVelocities(plant_context, ball)[3:]
         return ball_position, ball_velocity
+    elif system_name == "sweet_spot":
+        sweet_spot = plant.GetModelInstanceByName("sweet_spot")
+        sweet_spot_body = plant.GetRigidBodyByName("base", sweet_spot)
+        sweet_spot_pose = plant.EvalBodyPoseInWorld(plant_context, sweet_spot_body)
+        sweet_spot_position = sweet_spot_pose.translation()
+        # Idk how to get the velocity of a welded object, but we don't need it for now
+        return sweet_spot_position
 
 
 def run_swing_simulation(
@@ -220,7 +227,7 @@ def run_swing_simulation(
     initial_ball_position,
     initial_ball_velocity,
     meshcat=None,
-    check_dt=PITCH_DT,
+    check_dt=PITCH_DT*10,
     robot_constraints=None,
 ):
     """Run a swing simulation from start_time to end_time with the given initial conditions.
