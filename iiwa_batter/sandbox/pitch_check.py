@@ -76,11 +76,6 @@ directives:
     X_PC:
         translation: [0, 0, {STRIKE_ZONE_Z}]
 
-model_drivers:
-    iiwa: !IiwaDriver
-      hand_model_name: wsg
-      control_mode: torque_only
-
 plant_config:
     contact_model: "hydroelastic"
     discrete_contact_approximation: "lagged"

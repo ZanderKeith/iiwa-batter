@@ -2,8 +2,10 @@ import numpy as np
 import pydot
 from manipulation.station import LoadScenario, MakeHardwareStation
 from pydrake.all import (
+    BasicVector,
     Diagram,
     DiagramBuilder,
+    LeafSystem,
     Simulator,
 )
 
@@ -51,15 +53,37 @@ def interpolate_trajectory(simulation_timesteps, trajectory):
     return interpolated_trajectory
 
 
+class TrajectoryTorqueSystem(LeafSystem):
+    def __init__(self):
+        LeafSystem.__init__(self)
+        self.DeclareVectorOutputPort(
+            "trajectory_torque", BasicVector(NUM_JOINTS), self.CalcTorque
+        )
+
+    def CalcTorque(self, context, output):
+        time = context.get_time()
+        output.SetFromVector(np.zeros(NUM_JOINTS))
+
+    def Clone(self, context):
+        return TrajectoryTorqueSystem()
+
+
 def setup_simulator(dt=CONTACT_DT, meshcat=None):
     builder = DiagramBuilder()
     model_directive = make_model_directive(dt)
     scenario = LoadScenario(data=model_directive)
     station = builder.AddSystem(MakeHardwareStation(scenario, meshcat))
+    trajectory_torque_system = builder.AddSystem(TrajectoryTorqueSystem())
+
+    builder.Connect(
+        trajectory_torque_system.get_output_port(0),
+        station.GetInputPort("iiwa_actuation"),
+    )
+
     diagram = builder.Build()
     simulator = Simulator(diagram)
 
-    pydot.graph_from_dot_data(station.GetGraphvizString(max_depth=2))[0].write_png(
+    pydot.graph_from_dot_data(diagram.GetGraphvizString(max_depth=2))[0].write_png(
         "station_render.png"
     )
 
