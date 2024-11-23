@@ -25,12 +25,84 @@ from iiwa_batter.physics import (
 )
 
 
-def make_model_directive(dt=CONTACT_DT, model_urdf="iiwa14_limitless"):
+def make_model_directive(dt=CONTACT_DT, model_urdf="iiwa14_limitless", add_contact=True):
     # We're pitching the ball from +x to -x
     # The robot is sitting next to the origin
 
     # Rotates the base towards the plate just a little so the first joint doesn't max out before crossing the strike zone
     base_rotation_deg = np.rad2deg(np.pi / 4)
+
+    if add_contact:
+        contact_directive = f"""
+- add_model:
+    name: floor
+    file: file://{PACKAGE_ROOT}/assets/floor.sdf
+- add_weld:
+    parent: iiwa::base
+    child: floor::base
+    X_PC:
+        translation: [0, 0, -0.1]
+- add_model:
+    name: iiwa_link_0_collision
+    file: file://{PACKAGE_ROOT}/assets/collision_cylinder_0.sdf
+- add_weld:
+    parent: iiwa::base
+    child: iiwa_link_0_collision::base
+    X_PC:
+        translation: [0, 0, 0.075]
+- add_model:
+    name: iiwa_link_1_collision
+    file: file://{PACKAGE_ROOT}/assets/collision_cylinder_1.sdf
+- add_weld:
+    parent: iiwa::iiwa_link_1
+    child: iiwa_link_1_collision::base
+    X_PC:
+        translation: [0, 0, 0.2]
+        rotation: !Rpy
+            deg: [90, 0, 0]
+- add_model:
+    name: iiwa_link_2_collision
+    file: file://{PACKAGE_ROOT}/assets/collision_cylinder_2.sdf
+- add_weld:
+    parent: iiwa::iiwa_link_2
+    child: iiwa_link_2_collision::base
+    X_PC:
+        translation: [0, 0.23, 0.015]
+        rotation: !Rpy
+                deg: [90, 0, 0]
+- add_model:
+    name: iiwa_link_3_collision
+    file: file://{PACKAGE_ROOT}/assets/collision_cylinder_3.sdf
+- add_weld:
+    parent: iiwa::iiwa_link_3
+    child: iiwa_link_3_collision::base
+    X_PC:
+        translation: [0, 0, 0.22]
+        rotation: !Rpy
+            deg: [90, 0, 0]
+- add_model:
+    name: iiwa_link_4_collision
+    file: file://{PACKAGE_ROOT}/assets/collision_cylinder_4.sdf
+- add_weld:
+    parent: iiwa::iiwa_link_4
+    child: iiwa_link_4_collision::base
+    X_PC:
+        translation: [0, 0.2, 0.015]
+        rotation: !Rpy
+                deg: [90, 0, 0]
+- add_model:
+    name: iiwa_link_6_collision
+    file: file://{PACKAGE_ROOT}/assets/collision_cylinder_6.sdf
+- add_weld:
+    parent: iiwa::iiwa_link_6
+    child: iiwa_link_6_collision::base
+    X_PC:
+        translation: [0, 0.02, -0.005]
+        rotation: !Rpy
+            deg: [90, 0, 0]
+"""
+    else:
+        contact_directive = ""
 
     model_directive = f"""
 directives:
@@ -52,22 +124,7 @@ directives:
         rotation: !Rpy
             deg: [0, 0, {base_rotation_deg}]
         translation: [0, {PLATE_OFFSET_Y}, 0]
-- add_model:
-    name: floor
-    file: file://{PACKAGE_ROOT}/assets/floor.sdf
-- add_weld:
-    parent: iiwa::base
-    child: floor::base
-    X_PC:
-        translation: [0, 0, -0.1]
-- add_model:
-    name: iiwa_link_0_collision
-    file: file://{PACKAGE_ROOT}/assets/collision_cylinder_0.sdf
-- add_weld:
-    parent: iiwa::base
-    child: iiwa_link_0_collision::base
-    X_PC:
-        translation: [0, 0, 0.1]
+{contact_directive}
 - add_model:
     name: bat
     file: file://{PACKAGE_ROOT}/assets/bat.sdf
@@ -214,7 +271,7 @@ class CollisionCheckSystem(LeafSystem):
         self.terminated = False
 
 
-def setup_simulator(torque_trajectory, dt=CONTACT_DT, meshcat=None, plot_diagram=False):
+def setup_simulator(torque_trajectory, dt=CONTACT_DT, meshcat=None, plot_diagram=False, add_contact=True):
     """Set up the simulator to run a swing given a torque trajectory.
 
     Parameters
@@ -235,7 +292,7 @@ def setup_simulator(torque_trajectory, dt=CONTACT_DT, meshcat=None, plot_diagram
     """
 
     builder = DiagramBuilder()
-    model_directive = make_model_directive(dt)
+    model_directive = make_model_directive(dt, add_contact=add_contact)
     scenario = LoadScenario(data=model_directive)
     station = builder.AddSystem(MakeHardwareStation(scenario, meshcat))
 
@@ -443,10 +500,10 @@ def run_swing_simulation(
         #         ball_position - sweet_spot_pose.translation()
         #     )
 
+    if meshcat is not None:
+        meshcat.PublishRecording()
+
     # Get final position of the ball
     ball_position = plant.GetPositions(plant_context, ball)[4:]
     if ball_position[0] > 0:
         return {"result": "hit"}
-
-    if meshcat is not None:
-        meshcat.PublishRecording()

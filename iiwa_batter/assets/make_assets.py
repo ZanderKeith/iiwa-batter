@@ -295,9 +295,8 @@ def write_assets(
         f.write(sweet_spot())
 
     # This counts from 0, I don't care about collision of the end effector with anything since it's already super close to the bat
-    link_radii = [0.1, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
-    link_lengths = [0.2, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
-
+    link_radii = [0.1, 0.1, 0.08, 0.08, 0.08, 0.08, 0.07]
+    link_lengths = [0.15, 0.2, 0.22, 0.18, 0.15, 0.1, 0.18]
     for i, (radius, length) in enumerate(zip(link_radii, link_lengths)):
         with open(f"{PACKAGE_ROOT}/assets/collision_cylinder_{i}.sdf", "w+") as f:
             f.write(
@@ -310,8 +309,6 @@ def write_assets(
                     bat_resolution,
                 )
             )
-
-    # This is for the floor
 
     with open(f"{PACKAGE_ROOT}/assets/floor.sdf", "w+") as f:
         f.write(
