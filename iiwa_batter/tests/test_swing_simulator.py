@@ -188,11 +188,6 @@ def test_compare_simulation_dt_final_state():
     assert np.allclose(ball_velocity_a, ball_velocity_b, atol=1e-3)
 
 
-def test_bat_floor_collision_check():
-    # Ensure the collision check system works between the bat and the floor
-    pass
-
-
 def test_robot_bat_collision_check():
     # Ensure the collision check system works between the robot and the bat
 

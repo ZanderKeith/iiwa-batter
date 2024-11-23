@@ -153,14 +153,39 @@ class CollisionCheckSystem(LeafSystem):
         self._contact_port = self.DeclareAbstractInputPort(
             "contact_results", Value(ContactResults())
         )
+        self._ball_port = self.DeclareVectorInputPort(
+            "ball_state", BasicVector(13) # 7 position + 6 velocity
+        )
         self.DeclareVectorOutputPort(
             "collision_severity", BasicVector(1), self.check_collision
         )
+
         self.reset()
         self.set_name("collision_check_system")
 
     def check_collision(self, context, output):
-        pass
+        # This only gets run when the output is evaluated...
+        contact_results = self._contact_port.Eval(context)
+        num_hydroelastic_contacts = contact_results.num_hydroelastic_contacts()
+        if num_hydroelastic_contacts > 0:
+            # Iterate through the contacts and if it isn't a collision with the ball, report severity
+            # for i in range(num_hydroelastic_contacts):
+            #     contact_info = contact_results.hydroelastic_contact_info(i)
+            #     contact_location = contact_info.contact_surface().centroid()
+            #     ball_location = plant.GetPositions(plant_context, ball)[4:]
+            #     distance = np.linalg.norm(contact_location - ball_location)
+            #     if distance < 0.1:
+            #         continue
+            #     else:
+            #         collision_force = contact_results.hydroelastic_contact_info(i).F_Ac_W()
+            #         rotational = np.linalg.norm(collision_force.rotational())
+            #         tranalational = np.linalg.norm(collision_force.translational())
+            #         collision_severity = rotational + tranalational
+            #         print(f"Collision detected! Severity: {collision_severity}")
+            print("Collision detected!")
+
+        output.SetFromVector([0])
+
 
     def early_terminate():
         # I couldn't figure out how else to stop my simulation when a collision is detected
@@ -210,6 +235,11 @@ def setup_simulator(torque_trajectory, dt=CONTACT_DT, meshcat=None, plot_diagram
         station.GetOutputPort("contact_results"),
         collision_check_system.GetInputPort("contact_results"),
     )
+    builder.Connect(
+        station.GetOutputPort("ball_state"),
+        collision_check_system.GetInputPort("ball_state"),
+    )
+    # I want this to get run every timestep, so I'm connecting it to 
 
     diagram = builder.Build()
     simulator = Simulator(diagram)
@@ -231,6 +261,9 @@ def reset_simulator(simulator: Simulator, diagram: Diagram, new_torque_trajector
             "torque_trajectory_system"
         )
         torque_trajectory_system.update_trajectory(new_torque_trajectory)
+
+    collision_check_system = diagram.GetSubsystemByName("collision_check_system")
+    collision_check_system.reset()
 
     simulator.Initialize()
 
@@ -316,9 +349,11 @@ def run_swing_simulation(
 
     station: Diagram = diagram.GetSubsystemByName("station")
     plant: Diagram = station.GetSubsystemByName("plant")
+    collision_check_system: LeafSystem = diagram.GetSubsystemByName("collision_check_system")
     simulator_context = simulator.get_context()
     station_context = station.GetMyContextFromRoot(simulator_context)
     plant_context = plant.GetMyContextFromRoot(simulator_context)
+    collision_check_system_context = collision_check_system.GetMyContextFromRoot(simulator_context)
     # context.SetTime(start_time) # TODO: Is this needed?
     # plant_context.SetTime(start_time) # TODO: Is this needed?
     simulator.AdvanceTo(start_time)
@@ -358,24 +393,8 @@ def run_swing_simulation(
             contact_results = diagram.GetOutputPort("collision_severity")
             break
 
-        # Check for self-collision
-        contact_results = station.GetOutputPort("contact_results").Eval(station_context)
-        num_hydroelastic_contacts = contact_results.num_hydroelastic_contacts()
-        if num_hydroelastic_contacts > 0:
-            # Iterate through the contacts and if it isn't a collision with the ball, report severity
-            for i in range(num_hydroelastic_contacts):
-                contact_info = contact_results.hydroelastic_contact_info(i)
-                contact_location = contact_info.contact_surface().centroid()
-                ball_location = plant.GetPositions(plant_context, ball)[4:]
-                distance = np.linalg.norm(contact_location - ball_location)
-                if distance < 0.1:
-                    continue
-                else:
-                    collision_force = contact_results.hydroelastic_contact_info(i).F_Ac_W()
-                    rotational = np.linalg.norm(collision_force.rotational())
-                    tranalational = np.linalg.norm(collision_force.translational())
-                    collision_severity = rotational + tranalational
-                    print(f"Collision detected! Severity: {collision_severity}")
+        #collision_check_system.GetOutputPort("collision_severity").Eval(collision_check_system_context)
+        
 
         # contact_results = station.GetOutputPort("contact_results")
 
