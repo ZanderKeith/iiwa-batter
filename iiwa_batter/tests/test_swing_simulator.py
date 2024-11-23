@@ -5,6 +5,8 @@ from pydrake.all import (
 
 from iiwa_batter import (
     CONTACT_DT,
+    PITCH_DT,
+    CONTROL_DT,
     NUM_JOINTS,
     PITCH_DT,
 )
@@ -332,6 +334,105 @@ def test_joint_limits():
     enforce_joint_limit_system_context = enforce_joint_limit_system.GetMyContextFromRoot(simulator.get_context())
     cumulative_limit_break = enforce_joint_limit_system.GetOutputPort("cumulative_limit_break").Eval(enforce_joint_limit_system_context)
     assert cumulative_limit_break[0] > 1
+
+
+def test_simulator_time_advance():
+    # This one is just for me, what actually happens when the simulator advances time?
+
+    simulator, diagram = setup_simulator(torque_trajectory={}, dt=PITCH_DT, add_contact=False)
+
+    run_swing_simulation(
+        simulator=simulator,
+        diagram=diagram,
+        start_time=0,
+        end_time=1,
+        initial_joint_positions=np.array([0] * NUM_JOINTS),
+        initial_joint_velocities=np.array([0] * NUM_JOINTS),
+        initial_ball_position=PITCH_START_POSITION,
+        initial_ball_velocity=np.zeros(3),
+    )
+
+    time_1 = parse_simulation_state(simulator, diagram, "time")
+
+    simulator.AdvanceTo(time_1)
+
+    time_2 = parse_simulation_state(simulator, diagram, "time")
+
+    assert time_1 == time_2
+
+
+def test_simulation_state_preservation():
+    # With a torque trajectory that changes over time, run two sets of simulations
+    # The first one goes all the way through
+    # The second one resets but loads the state where it left off
+    # Ensure the final states are the same
+
+    robot_constraints = JOINT_CONSTRAINTS["iiwa14"]
+
+    torque_trajectory = {
+        0: np.ones(NUM_JOINTS) * 40, 
+        CONTROL_DT: np.ones(NUM_JOINTS) * -40,
+        CONTROL_DT*2: np.ones(NUM_JOINTS) * 40,
+        CONTROL_DT*3: np.ones(NUM_JOINTS) * -40
+    }
+
+    simulator, diagram = setup_simulator(torque_trajectory=torque_trajectory, dt=PITCH_DT, add_contact=False, robot_constraints=robot_constraints)
+
+    run_swing_simulation(
+        simulator=simulator,
+        diagram=diagram,
+        start_time=0,
+        end_time=CONTROL_DT*4,
+        initial_joint_positions=np.array([0] * NUM_JOINTS),
+        initial_joint_velocities=np.array([0] * NUM_JOINTS),
+        initial_ball_position=PITCH_START_POSITION,
+        initial_ball_velocity=np.zeros(3),
+    )
+
+    joint_positions_a, joint_velocities_a = parse_simulation_state(simulator, diagram, "iiwa")
+    ball_position_a, ball_velocity_a = parse_simulation_state(simulator, diagram, "ball")
+    end_time_a = parse_simulation_state(simulator, diagram, "time")
+
+    reset_simulator(simulator, diagram)
+
+    run_swing_simulation(
+        simulator=simulator,
+        diagram=diagram,
+        start_time=0,
+        end_time=CONTROL_DT*2,
+        initial_joint_positions=np.array([0] * NUM_JOINTS),
+        initial_joint_velocities=np.array([0] * NUM_JOINTS),
+        initial_ball_position=PITCH_START_POSITION,
+        initial_ball_velocity=np.zeros(3),
+        record_state=True,
+    )
+
+    joint_positions_i, joint_velocities_i = parse_simulation_state(simulator, diagram, "iiwa")
+    ball_position_i, ball_velocity_i = parse_simulation_state(simulator, diagram, "ball")
+    end_time_i = parse_simulation_state(simulator, diagram, "time")
+
+    reset_simulator(simulator, diagram)
+
+    run_swing_simulation(
+        simulator=simulator,
+        diagram=diagram,
+        start_time=CONTROL_DT*2,
+        end_time=CONTROL_DT*4,
+        initial_joint_positions=joint_positions_i,
+        initial_joint_velocities=joint_velocities_i,
+        initial_ball_position=ball_position_i,
+        initial_ball_velocity=ball_velocity_i,
+    )
+
+    joint_positions_b, joint_velocities_b = parse_simulation_state(simulator, diagram, "iiwa")
+    ball_position_b, ball_velocity_b = parse_simulation_state(simulator, diagram, "ball")
+    end_time_b = parse_simulation_state(simulator, diagram, "time")
+
+    assert end_time_a == end_time_b
+    assert np.allclose(ball_position_a, ball_position_b)
+    assert np.allclose(ball_velocity_a, ball_velocity_b)
+    assert np.allclose(joint_positions_a, joint_positions_b)
+    assert np.allclose(joint_velocities_a, joint_velocities_b)
 
 def test_benchmark_simulation_handoff():
     # See how much faster it is to run the simulation with a longer dt during the pitch and a shorter dt during the swing

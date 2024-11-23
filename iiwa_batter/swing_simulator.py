@@ -457,6 +457,8 @@ def parse_simulation_state(simulator: Simulator, diagram: Diagram, system_name: 
         sweet_spot_position = sweet_spot_pose.translation()
         # Idk how to get the velocity of a welded object, but we don't need it for now
         return sweet_spot_position
+    elif system_name == "time":
+        return simulator_context.get_time()
 
 
 def run_swing_simulation(
@@ -564,6 +566,9 @@ def run_swing_simulation(
                 "iiwa": parse_simulation_state(simulator, diagram, "iiwa"),
                 "ball": parse_simulation_state(simulator, diagram, "ball"),
             }
+
+    if timebase[-1] < end_time:
+        simulator.AdvanceTo(end_time)
 
     if meshcat is not None:
         meshcat.PublishRecording()
