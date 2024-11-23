@@ -153,7 +153,11 @@ class EnforceJointLimitSystem(LeafSystem):
 
 
 class CollisionCheckSystem(LeafSystem):
-    """System that checks for collisions in the robot and sets a flag with their severity if detected."""
+    """System that checks for collisions in the robot and sets a flag with their severity if detected.
+    
+    Note that this doesn't actually prevent hits between the ball and the robot, but I've set the hydroelastic contacts of the robot to be so soft
+    that the ball won't get hardly any distance, meaning optimization will probably find a better solution.
+    """
 
     def __init__(self):
         LeafSystem.__init__(self)
@@ -199,11 +203,15 @@ class CollisionCheckSystem(LeafSystem):
     def early_terminate(self):
         # I couldn't figure out how else to stop my simulation when a collision is detected
         # This is cheese but it works
+        if self.terminated:
+            return
+        self.terminated = True
         raise EOFError("Collision detected! Terminating simulation.")
 
     def reset(self):
         self.collision_severity = np.zeros(1)
         self.num_collision_timesteps = 0
+        self.terminated = False
 
 
 def setup_simulator(torque_trajectory, dt=CONTACT_DT, meshcat=None, plot_diagram=False):
@@ -328,7 +336,7 @@ def run_swing_simulation(
     meshcat=None,
     check_dt=PITCH_DT * 100,
     robot_constraints=None,
-):
+) -> dict:
     """Run a swing simulation from start_time to end_time with the given initial conditions.
 
     Parameters
@@ -355,6 +363,11 @@ def run_swing_simulation(
         The timestep to use for checking the simulation, by default PITCH_DT
     robot_constraints : dict, optional
         A dictionary of constraints to enforce on the robot, by default None
+
+    Returns
+    -------
+    status_dict
+        A dictionary containing the results of the simulation
     """
 
     if meshcat is not None:
@@ -403,8 +416,12 @@ def run_swing_simulation(
             simulator.AdvanceTo(t)
         except EOFError:
             # Read the collision severity port and stop here
-            contact_results = diagram.GetOutputPort("collision_severity")
-            break
+            contact_severity = collision_check_system.GetOutputPort("collision_severity").Eval(collision_check_system_context)
+            status_dict = {
+                "result": "collision",
+                "severity": contact_severity[0],
+            }
+            return status_dict
 
         #collision_check_system.GetOutputPort("collision_severity").Eval(collision_check_system_context)
         
@@ -425,6 +442,11 @@ def run_swing_simulation(
         #     strike_distance = np.linalg.norm(
         #         ball_position - sweet_spot_pose.translation()
         #     )
+
+    # Get final position of the ball
+    ball_position = plant.GetPositions(plant_context, ball)[4:]
+    if ball_position[0] > 0:
+        return {"result": "hit"}
 
     if meshcat is not None:
         meshcat.PublishRecording()

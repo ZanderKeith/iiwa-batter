@@ -188,14 +188,14 @@ def test_compare_simulation_dt_final_state():
     assert np.allclose(ball_velocity_a, ball_velocity_b, atol=1e-3)
 
 
-def test_robot_bat_collision_check():
+def test_self_collision_check():
     # Ensure the collision check system works between the robot and the bat
 
     simulator_contact_dt, diagram_contact_dt = setup_simulator(
         torque_trajectory={}, dt=PITCH_DT
     )
 
-    run_swing_simulation(
+    status_dict = run_swing_simulation(
         simulator=simulator_contact_dt,
         diagram=diagram_contact_dt,
         start_time=0,
@@ -205,6 +205,31 @@ def test_robot_bat_collision_check():
         initial_ball_position=PITCH_START_POSITION,
         initial_ball_velocity=np.zeros(3),
     )
+
+    assert status_dict["result"] == "collision"
+    assert status_dict["severity"] > 0
+
+def test_non_self_collision_check():
+    # Ensure the simulator doesn't report a collision when the ball and the bat collide
+    simulator_contact_dt, diagram_contact_dt = setup_simulator(
+        torque_trajectory={}, dt=PITCH_DT
+    )
+
+    initial_ball_velocity, _ = find_ball_initial_velocity(90, [0, 0.9, 1.2])
+
+    status_dict = run_swing_simulation(
+        simulator=simulator_contact_dt,
+        diagram=diagram_contact_dt,
+        start_time=0,
+        end_time=0.5,
+        initial_joint_positions=np.array([0] * NUM_JOINTS),
+        initial_joint_velocities=np.array([0] * NUM_JOINTS),
+        initial_ball_position=PITCH_START_POSITION,
+        initial_ball_velocity=initial_ball_velocity,
+    )
+
+    assert status_dict["result"] != "collision"
+    assert "severity" not in status_dict.keys()
 
 
 def test_benchmark_simulation_handoff():
