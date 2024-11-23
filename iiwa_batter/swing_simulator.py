@@ -246,15 +246,14 @@ class EnforceJointLimitSystem(LeafSystem):
     def enforce_limits(self, context, output):
         desired_torque = self._torque_input_port.Eval(context)
         iiwa_state = self._state_input_port.Eval(context)
-        joint_positions = iiwa_state[:NUM_JOINTS]
+        # joint_positions = iiwa_state[:NUM_JOINTS] # Position checking is done in the urdf
         joint_velocities = iiwa_state[NUM_JOINTS:]
 
-        velocity_overshoot = np.maximum(np.abs(joint_velocities) - self.joint_velocity_abs, 0)
+        velocity_overshoot = np.maximum(np.abs(joint_velocities) - self.joint_velocity_abs * self.limit_tolerance, 0)
         self.cumulative_limit_break += np.sum(velocity_overshoot)
         torque_correction = -1000 * velocity_overshoot * np.sign(joint_velocities)
         valid_torque = np.where(velocity_overshoot <= 0, desired_torque, 0)
 
-        # Check if we're about to violate the joint limits
         output_torque = np.where(velocity_overshoot > 0, valid_torque + torque_correction, desired_torque)
         
         output.SetFromVector(output_torque)
@@ -471,6 +470,7 @@ def run_swing_simulation(
     meshcat=None,
     check_dt=PITCH_DT * 100,
     robot_constraints=None,
+    record_state=False,
 ) -> dict:
     """Run a swing simulation from start_time to end_time with the given initial conditions.
 
@@ -545,7 +545,7 @@ def run_swing_simulation(
     if meshcat is not None:
         meshcat.StartRecording()
 
-    strike_distance = None
+    state_dict = {}
     for t in timebase:
         try:
             simulator.AdvanceTo(t)
@@ -555,28 +555,15 @@ def run_swing_simulation(
             status_dict = {
                 "result": "collision",
                 "severity": contact_severity[0],
+                "state": state_dict,
             }
             return status_dict
-
-        #collision_check_system.GetOutputPort("collision_severity").Eval(collision_check_system_context)
         
-
-        # contact_results = station.GetOutputPort("contact_results")
-
-        # Enforce joint position and velocity limits... eventually
-        # joint_positions = plant.GetPositions(plant_context, iiwa)
-
-        # Record the distance between the sweet spot of the bat and the ball at the point when the ball passes through the strike zone
-        # to include in our loss function
-        # if t >= time_of_flight and strike_distance is None:
-        #     plant.HasModelInstanceNamed("sweet_spot")
-        #     sweet_spot = plant.GetModelInstanceByName("sweet_spot")
-        #     sweet_spot_body = plant.GetRigidBodyByName("base", sweet_spot)
-        #     sweet_spot_pose = plant.EvalBodyPoseInWorld(plant_context, sweet_spot_body)
-        #     ball_position = plant.GetPositions(plant_context, ball)[4:]
-        #     strike_distance = np.linalg.norm(
-        #         ball_position - sweet_spot_pose.translation()
-        #     )
+        if record_state:
+            state_dict[t] = {
+                "iiwa": parse_simulation_state(simulator, diagram, "iiwa"),
+                "ball": parse_simulation_state(simulator, diagram, "ball"),
+            }
 
     if meshcat is not None:
         meshcat.PublishRecording()
@@ -584,4 +571,9 @@ def run_swing_simulation(
     # Get final position of the ball
     ball_position = plant.GetPositions(plant_context, ball)[4:]
     if ball_position[0] > 0:
-        return {"result": "hit"}
+        status_dict = {"result": "hit", "state": state_dict}
+    else:
+        status_dict = {"result": "miss", "state": state_dict}
+
+    return status_dict
+

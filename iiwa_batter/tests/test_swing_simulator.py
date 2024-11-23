@@ -296,9 +296,14 @@ def test_joint_limits():
     )
 
     # Ensure the joint positions and velocities are within the limits at all times
-    joint_positions, joint_velocities = parse_simulation_state(simulator, diagram, "iiwa")
-    for joint, positions in robot_constraints["joint_range"].items():
-        assert positions[0] <= joint_positions[int(joint)-1] <= positions[1]
+    state_dict = status_dict["state"]
+    for time, state in state_dict.items():
+        joint_positions = state["iiwa"][0]
+        joint_velocities = state["iiwa"][1]
+        for joint, positions in robot_constraints["joint_range"].items():
+            assert positions[0] <= joint_positions[int(joint)-1] <= positions[1], f"Joint {joint} has position {joint_positions[int(joint)-1]} at time {time}"
+            assert -robot_constraints["joint_velocity"][joint] <= joint_velocities[int(joint)-1] <= robot_constraints["joint_velocity"][joint], f"Joint {joint} has velocity {joint_velocities[int(joint)-1]} at time {time}"
+
 
 
 def test_benchmark_simulation_handoff():
