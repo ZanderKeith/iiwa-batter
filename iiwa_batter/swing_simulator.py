@@ -25,7 +25,7 @@ from iiwa_batter.physics import (
 )
 
 
-def make_model_directive(dt=CONTACT_DT, model_urdf="iiwa14_limitless", add_contact=True):
+def make_model_directive(dt=CONTACT_DT, model_urdf="iiwa14", add_contact=True):
     # We're pitching the ball from +x to -x
     # The robot is sitting next to the origin
 
@@ -205,8 +205,65 @@ class EnforceJointLimitSystem(LeafSystem):
     If the speed constraint is about to be violated, slightly reverse torques.
     If the position constraint is about to be violated, highly reverse torques.
 
-    Might be able to get away with doing this in the 'collision check' loop instead of its own leaf system... to be determined.
+    Also keeps track of the cumulative amount of how much the limits have been broken,
+    to be used in the loss function.
     """
+
+    def __init__(self, joint_limits: dict, limit_tolerance=0.95):
+        LeafSystem.__init__(self)
+        self._torque_input_port = self.DeclareVectorInputPort(
+            "desired_torque", BasicVector(NUM_JOINTS)
+        )
+        self._state_input_port = self.DeclareVectorInputPort(
+            "joint_state", BasicVector(2 * NUM_JOINTS)
+        )
+        self.DeclareVectorOutputPort(
+            "enforced_torque", BasicVector(NUM_JOINTS), self.enforce_limits
+        )
+        self.DeclareVectorOutputPort(
+            "cumulative_limit_break", BasicVector(1), self.get_cumulative_limit_break
+        )
+        self.joint_limits = joint_limits
+        self.limit_tolerance = limit_tolerance # When we get to this percent of the limit, start enforcing it.
+        self.fill_joint_limits(joint_limits)
+        self.set_name("enforce_joint_limit_system")
+        self.reset()
+    
+    def fill_joint_limits(self, joint_limits):
+        # Turn the joint limits into a vector for easy access later
+        try:
+            self.joint_range_upper = np.array([joint_limits["joint_range"][str(joint + 1)][1] for joint in range(NUM_JOINTS)])
+            self.joint_range_lower = np.array([joint_limits["joint_range"][str(joint + 1)][0] for joint in range(NUM_JOINTS)])
+        except KeyError:
+            self.joint_range_upper = np.ones(NUM_JOINTS) * 1e8
+            self.joint_range_lower = np.ones(NUM_JOINTS) * -1e8
+        
+        try:
+            self.joint_velocity_abs = np.array([joint_limits["joint_velocity"][str(joint + 1)] for joint in range(NUM_JOINTS)])
+        except KeyError:
+            self.joint_velocity_abs = np.ones(NUM_JOINTS) * 1e8
+
+    def enforce_limits(self, context, output):
+        desired_torque = self._torque_input_port.Eval(context)
+        iiwa_state = self._state_input_port.Eval(context)
+        joint_positions = iiwa_state[:NUM_JOINTS]
+        joint_velocities = iiwa_state[NUM_JOINTS:]
+
+        velocity_overshoot = np.maximum(np.abs(joint_velocities) - self.joint_velocity_abs, 0)
+        self.cumulative_limit_break += np.sum(velocity_overshoot)
+        torque_correction = -1000 * velocity_overshoot * np.sign(joint_velocities)
+        valid_torque = np.where(velocity_overshoot <= 0, desired_torque, 0)
+
+        # Check if we're about to violate the joint limits
+        output_torque = np.where(velocity_overshoot > 0, valid_torque + torque_correction, desired_torque)
+        
+        output.SetFromVector(output_torque)
+
+    def get_cumulative_limit_break(self, context, output):
+        output.SetFromVector(self.cumulative_limit_break)
+
+    def reset(self):
+        self.cumulative_limit_break = np.zeros(1)
 
 
 class CollisionCheckSystem(LeafSystem):
@@ -277,7 +334,7 @@ class CollisionCheckSystem(LeafSystem):
         self.terminated = False
 
 
-def setup_simulator(torque_trajectory, dt=CONTACT_DT, meshcat=None, plot_diagram=False, add_contact=True):
+def setup_simulator(torque_trajectory, dt=CONTACT_DT, meshcat=None, plot_diagram=False, add_contact=True, robot_constraints=None, model_urdf="iiwa14"):
     """Set up the simulator to run a swing given a torque trajectory.
 
     Parameters
@@ -298,17 +355,32 @@ def setup_simulator(torque_trajectory, dt=CONTACT_DT, meshcat=None, plot_diagram
     """
 
     builder = DiagramBuilder()
-    model_directive = make_model_directive(dt, add_contact=add_contact)
+    model_directive = make_model_directive(dt, add_contact=add_contact, model_urdf=model_urdf)
     scenario = LoadScenario(data=model_directive)
     station = builder.AddSystem(MakeHardwareStation(scenario, meshcat))
 
     trajectory_torque_system = builder.AddSystem(
         TorqueTrajectorySystem(torque_trajectory)
     )
-    builder.Connect(
-        trajectory_torque_system.get_output_port(0),
-        station.GetInputPort("iiwa_actuation"),
-    )
+    if robot_constraints is None:
+        builder.Connect(
+            trajectory_torque_system.get_output_port(0),
+            station.GetInputPort("iiwa_actuation"),
+        )
+    else:
+        enforce_joint_limit_system = builder.AddSystem(EnforceJointLimitSystem(robot_constraints))
+        builder.Connect(
+            trajectory_torque_system.get_output_port(0),
+            enforce_joint_limit_system.GetInputPort("desired_torque"),
+        )
+        builder.Connect(
+            station.GetOutputPort("iiwa_state"),
+            enforce_joint_limit_system.GetInputPort("joint_state"),
+        )
+        builder.Connect(
+            enforce_joint_limit_system.GetOutputPort("enforced_torque"),
+            station.GetInputPort("iiwa_actuation"),
+        )
 
     collision_check_system = builder.AddSystem(CollisionCheckSystem())
     builder.Connect(
@@ -319,7 +391,7 @@ def setup_simulator(torque_trajectory, dt=CONTACT_DT, meshcat=None, plot_diagram
         station.GetOutputPort("ball_state"),
         collision_check_system.GetInputPort("ball_state"),
     )
-    # I want this to get run every timestep, so I'm connecting it to an input of a thing which gets run every timestep
+    # I want the collision check to get run every timestep, so I'm connecting it to an input of a thing which gets run every timestep
     builder.Connect(
         collision_check_system.GetOutputPort("collision_severity"),
         trajectory_torque_system.GetInputPort("dummy"),

@@ -12,6 +12,7 @@ from iiwa_batter.physics import (
     PITCH_START_POSITION,
     find_ball_initial_velocity,
 )
+from iiwa_batter.robot_constraints.get_joint_constraints import JOINT_CONSTRAINTS
 from iiwa_batter.swing_simulator import (
     parse_simulation_state,
     reset_simulator,
@@ -209,6 +210,7 @@ def test_self_collision_check():
     assert status_dict["result"] == "collision"
     assert status_dict["severity"] > 0
 
+
 def test_non_self_collision_check():
     # Ensure the simulator doesn't report a collision when the ball and the bat collide
     simulator_contact_dt, diagram_contact_dt = setup_simulator(
@@ -230,6 +232,7 @@ def test_non_self_collision_check():
 
     assert status_dict["result"] != "collision"
     assert "severity" not in status_dict.keys()
+
 
 def test_collision_doesnt_affect_final_state():
     # Ensure adding the collision geometry doesn't affect the final state of the system
@@ -272,6 +275,31 @@ def test_collision_doesnt_affect_final_state():
 
     assert np.allclose(joint_positions_collision, joint_positions_no_collision)
     assert np.allclose(joint_velocities_collision, joint_velocities_no_collision)
+
+
+def test_joint_limits():
+    # Ensure joint position limits are enforced
+    robot_constraints = JOINT_CONSTRAINTS["iiwa14"]
+
+    simulator, diagram = setup_simulator(torque_trajectory={0:np.ones(NUM_JOINTS)*40}, dt=PITCH_DT, add_contact=False, robot_constraints=robot_constraints)
+
+    status_dict = run_swing_simulation(
+        simulator=simulator,
+        diagram=diagram,
+        start_time=0,
+        end_time=1.0,
+        initial_joint_positions=np.array([0] * NUM_JOINTS),
+        initial_joint_velocities=np.array([0] * NUM_JOINTS),
+        initial_ball_position=PITCH_START_POSITION,
+        initial_ball_velocity=np.zeros(3),
+        record_state=True,
+    )
+
+    # Ensure the joint positions and velocities are within the limits at all times
+    joint_positions, joint_velocities = parse_simulation_state(simulator, diagram, "iiwa")
+    for joint, positions in robot_constraints["joint_range"].items():
+        assert positions[0] <= joint_positions[int(joint)-1] <= positions[1]
+
 
 def test_benchmark_simulation_handoff():
     # See how much faster it is to run the simulation with a longer dt during the pitch and a shorter dt during the swing
