@@ -119,6 +119,9 @@ class TorqueTrajectorySystem(LeafSystem):
         self.DeclareVectorOutputPort(
             "trajectory_torque", BasicVector(NUM_JOINTS), self.calculate_torque
         )
+        self.dummy_input = self.DeclareVectorInputPort(
+            "dummy", BasicVector(1)  # Dummy port to trigger the output
+        )
         self.update_trajectory(torque_trajectory)
         self.set_name("torque_trajectory_system")
 
@@ -127,6 +130,10 @@ class TorqueTrajectorySystem(LeafSystem):
         # Perform rectilinear interpolation by finding the largest timestep that is less than or equal to the current time
         timestep = self.programmed_timesteps[self.programmed_timesteps <= time][-1]
         output.SetFromVector(self.torque_trajectory[timestep])
+
+        # This is a hack to make the contact simulation run every timestep, since I want to
+        # stop the expensive hydroelastic contact ASAP if possible
+        self.dummy_input.Eval(context)
 
     def update_trajectory(self, torque_trajectory: dict[float, np.ndarray]):
         if len(torque_trajectory) == 0:
@@ -169,31 +176,33 @@ class CollisionCheckSystem(LeafSystem):
         num_hydroelastic_contacts = contact_results.num_hydroelastic_contacts()
         if num_hydroelastic_contacts > 0:
             # Iterate through the contacts and if it isn't a collision with the ball, report severity
-            # for i in range(num_hydroelastic_contacts):
-            #     contact_info = contact_results.hydroelastic_contact_info(i)
-            #     contact_location = contact_info.contact_surface().centroid()
-            #     ball_location = plant.GetPositions(plant_context, ball)[4:]
-            #     distance = np.linalg.norm(contact_location - ball_location)
-            #     if distance < 0.1:
-            #         continue
-            #     else:
-            #         collision_force = contact_results.hydroelastic_contact_info(i).F_Ac_W()
-            #         rotational = np.linalg.norm(collision_force.rotational())
-            #         tranalational = np.linalg.norm(collision_force.translational())
-            #         collision_severity = rotational + tranalational
-            #         print(f"Collision detected! Severity: {collision_severity}")
-            print("Collision detected!")
+            for i in range(num_hydroelastic_contacts):
+                contact_info = contact_results.hydroelastic_contact_info(i)
+                contact_location = contact_info.contact_surface().centroid()
+                ball_location = self._ball_port.Eval(context)[4:7]
+                distance = np.linalg.norm(contact_location - ball_location)
+                if distance < 0.1:
+                    continue
+                else:
+                    collision_force = contact_results.hydroelastic_contact_info(i).F_Ac_W()
+                    rotational = np.linalg.norm(collision_force.rotational())
+                    tranalational = np.linalg.norm(collision_force.translational())
+                    self.collision_severity[0] += rotational + tranalational
 
-        output.SetFromVector([0])
+        output.SetFromVector(self.collision_severity)
 
+        if self.collision_severity[0] > 0:
+            self.num_collision_timesteps += 1
+            if self.num_collision_timesteps > 10:
+                self.early_terminate()
 
-    def early_terminate():
+    def early_terminate(self):
         # I couldn't figure out how else to stop my simulation when a collision is detected
-        # I didn't want to
+        # This is cheese but it works
         raise EOFError("Collision detected! Terminating simulation.")
 
     def reset(self):
-        self.collision_severity = 0
+        self.collision_severity = np.zeros(1)
         self.num_collision_timesteps = 0
 
 
@@ -239,7 +248,11 @@ def setup_simulator(torque_trajectory, dt=CONTACT_DT, meshcat=None, plot_diagram
         station.GetOutputPort("ball_state"),
         collision_check_system.GetInputPort("ball_state"),
     )
-    # I want this to get run every timestep, so I'm connecting it to 
+    # I want this to get run every timestep, so I'm connecting it to an input of a thing which gets run every timestep
+    builder.Connect(
+        collision_check_system.GetOutputPort("collision_severity"),
+        trajectory_torque_system.GetInputPort("dummy"),
+    )
 
     diagram = builder.Build()
     simulator = Simulator(diagram)
