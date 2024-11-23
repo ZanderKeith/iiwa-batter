@@ -70,10 +70,6 @@ def compliant_bat(
 def compliant_ball(
     ball_modulus, mesh_resolution, mu_dynamic, hunt_crossley_dissipation
 ):
-    # ball_modulus = 69e6 / 100
-
-    # TODO: Add inertia!
-
     return f"""<?xml version="1.0"?>
     <sdf version="1.7">
       <model name="ball">
@@ -216,6 +212,52 @@ def sweet_spot():
     """
 
 
+def collision_cylinder(
+    radius, length, modulus, mu_dynamic, hunt_crossley_dissipation, mesh_resolution
+):
+    modulus = modulus / 100000  # Softer than the bat
+    mu_dynamic = mu_dynamic * 10  # More friction than the bat
+    hunt_crossley_dissipation = (
+        hunt_crossley_dissipation * 10
+    )  # Collision significantly more dissipative
+    mesh_resolution = mesh_resolution * 100  # Coarser mesh
+    return f"""<?xml version="1.0"?>
+<sdf version="1.7">
+    <model name="bat">
+    <pose>0 0 0 0 0 0</pose>
+    <link name="base">
+        <collision name="collision">
+        <geometry>
+            <cylinder>
+            <radius>{radius}</radius>
+            <length>{length}</length>
+            </cylinder>
+        </geometry>
+        <drake:proximity_properties>
+            <drake:compliant_hydroelastic/>
+            <drake:hydroelastic_modulus>{modulus}</drake:hydroelastic_modulus>
+            <drake:mu_dynamic>{mu_dynamic}</drake:mu_dynamic>
+            <drake:hunt_crossley_dissipation>{hunt_crossley_dissipation}</drake:hunt_crossley_dissipation>
+            <drake:mesh_resolution_hint>{mesh_resolution}</drake:mesh_resolution_hint>
+        </drake:proximity_properties>
+        </collision>
+        <visual name="visual">
+        <geometry>
+            <cylinder>
+            <radius>{radius}</radius>
+            <length>{length}</length>
+            </cylinder>
+        </geometry>
+        <material>
+            <diffuse>1.0 1.0 1.0 0.2</diffuse>
+        </material>
+        </visual>
+    </link>
+    </model>
+</sdf>
+"""
+
+
 def write_assets(
     bat_modulus,
     ball_modulus,
@@ -251,6 +293,37 @@ def write_assets(
 
     with open(f"{PACKAGE_ROOT}/assets/sweet_spot.sdf", "w+") as f:
         f.write(sweet_spot())
+
+    # This counts from 0, I don't care about collision of the end effector with anything since it's already super close to the bat
+    link_radii = [0.1, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
+    link_lengths = [0.2, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
+
+    for i, (radius, length) in enumerate(zip(link_radii, link_lengths)):
+        with open(f"{PACKAGE_ROOT}/assets/collision_cylinder_{i}.sdf", "w+") as f:
+            f.write(
+                collision_cylinder(
+                    radius,
+                    length,
+                    bat_modulus,
+                    mu_dynamic,
+                    hunt_crossley_dissipation,
+                    bat_resolution,
+                )
+            )
+
+    # This is for the floor
+
+    with open(f"{PACKAGE_ROOT}/assets/floor.sdf", "w+") as f:
+        f.write(
+            collision_cylinder(
+                2,
+                0.1,
+                bat_modulus,
+                mu_dynamic,
+                hunt_crossley_dissipation,
+                bat_resolution,
+            )
+        )
 
 
 if __name__ == "__main__":

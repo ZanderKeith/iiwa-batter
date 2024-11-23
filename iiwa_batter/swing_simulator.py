@@ -3,10 +3,12 @@ import pydot
 from manipulation.station import LoadScenario, MakeHardwareStation
 from pydrake.all import (
     BasicVector,
+    ContactResults,
     Diagram,
     DiagramBuilder,
     LeafSystem,
     Simulator,
+    Value,
 )
 
 from iiwa_batter import (
@@ -50,6 +52,22 @@ directives:
         rotation: !Rpy
             deg: [0, 0, {base_rotation_deg}]
         translation: [0, {PLATE_OFFSET_Y}, 0]
+- add_model:
+    name: floor
+    file: file://{PACKAGE_ROOT}/assets/floor.sdf
+- add_weld:
+    parent: iiwa::base
+    child: floor::base
+    X_PC:
+        translation: [0, 0, -0.1]
+- add_model:
+    name: iiwa_link_0_collision
+    file: file://{PACKAGE_ROOT}/assets/collision_cylinder_0.sdf
+- add_weld:
+    parent: iiwa::base
+    child: iiwa_link_0_collision::base
+    X_PC:
+        translation: [0, 0, 0.1]
 - add_model:
     name: bat
     file: file://{PACKAGE_ROOT}/assets/bat.sdf
@@ -111,6 +129,8 @@ class TorqueTrajectorySystem(LeafSystem):
         output.SetFromVector(self.torque_trajectory[timestep])
 
     def update_trajectory(self, torque_trajectory: dict[float, np.ndarray]):
+        if len(torque_trajectory) == 0:
+            torque_trajectory = {0: np.array([0] * NUM_JOINTS)}
         self.torque_trajectory = torque_trajectory
         self.programmed_timesteps = np.array(list(torque_trajectory.keys()))
 
@@ -123,6 +143,33 @@ class EnforceJointLimitSystem(LeafSystem):
 
     Might be able to get away with doing this in the 'collision check' loop instead of its own leaf system... to be determined.
     """
+
+
+class CollisionCheckSystem(LeafSystem):
+    """System that checks for collisions in the robot and sets a flag with their severity if detected."""
+
+    def __init__(self):
+        LeafSystem.__init__(self)
+        self._contact_port = self.DeclareAbstractInputPort(
+            "contact_results", Value(ContactResults())
+        )
+        self.DeclareVectorOutputPort(
+            "collision_severity", BasicVector(1), self.check_collision
+        )
+        self.reset()
+        self.set_name("collision_check_system")
+
+    def check_collision(self, context, output):
+        pass
+
+    def early_terminate():
+        # I couldn't figure out how else to stop my simulation when a collision is detected
+        # I didn't want to
+        raise EOFError("Collision detected! Terminating simulation.")
+
+    def reset(self):
+        self.collision_severity = 0
+        self.num_collision_timesteps = 0
 
 
 def setup_simulator(torque_trajectory, dt=CONTACT_DT, meshcat=None, plot_diagram=False):
@@ -149,13 +196,19 @@ def setup_simulator(torque_trajectory, dt=CONTACT_DT, meshcat=None, plot_diagram
     model_directive = make_model_directive(dt)
     scenario = LoadScenario(data=model_directive)
     station = builder.AddSystem(MakeHardwareStation(scenario, meshcat))
+
     trajectory_torque_system = builder.AddSystem(
         TorqueTrajectorySystem(torque_trajectory)
     )
-
     builder.Connect(
         trajectory_torque_system.get_output_port(0),
         station.GetInputPort("iiwa_actuation"),
+    )
+
+    collision_check_system = builder.AddSystem(CollisionCheckSystem())
+    builder.Connect(
+        station.GetOutputPort("contact_results"),
+        collision_check_system.GetInputPort("contact_results"),
     )
 
     diagram = builder.Build()
@@ -227,7 +280,7 @@ def run_swing_simulation(
     initial_ball_position,
     initial_ball_velocity,
     meshcat=None,
-    check_dt=PITCH_DT*10,
+    check_dt=PITCH_DT * 100,
     robot_constraints=None,
 ):
     """Run a swing simulation from start_time to end_time with the given initial conditions.
@@ -258,9 +311,13 @@ def run_swing_simulation(
         A dictionary of constraints to enforce on the robot, by default None
     """
 
+    if meshcat is not None:
+        meshcat.Delete()
+
     station: Diagram = diagram.GetSubsystemByName("station")
     plant: Diagram = station.GetSubsystemByName("plant")
     simulator_context = simulator.get_context()
+    station_context = station.GetMyContextFromRoot(simulator_context)
     plant_context = plant.GetMyContextFromRoot(simulator_context)
     # context.SetTime(start_time) # TODO: Is this needed?
     # plant_context.SetTime(start_time) # TODO: Is this needed?
@@ -290,15 +347,36 @@ def run_swing_simulation(
     timebase = np.arange(start_time, end_time + check_dt, check_dt)
 
     if meshcat is not None:
-        meshcat.Delete()
         meshcat.StartRecording()
 
     strike_distance = None
     for t in timebase:
-        simulator.AdvanceTo(t)
+        try:
+            simulator.AdvanceTo(t)
+        except EOFError:
+            # Read the collision severity port and stop here
+            contact_results = diagram.GetOutputPort("collision_severity")
+            break
 
-        # Check for self-collision... eventually
-        # station.GetOutputPort("contact_results").Eval(station_context)
+        # Check for self-collision
+        contact_results = station.GetOutputPort("contact_results").Eval(station_context)
+        num_hydroelastic_contacts = contact_results.num_hydroelastic_contacts()
+        if num_hydroelastic_contacts > 0:
+            # Iterate through the contacts and if it isn't a collision with the ball, report severity
+            for i in range(num_hydroelastic_contacts):
+                contact_info = contact_results.hydroelastic_contact_info(i)
+                contact_location = contact_info.contact_surface().centroid()
+                ball_location = plant.GetPositions(plant_context, ball)[4:]
+                distance = np.linalg.norm(contact_location - ball_location)
+                if distance < 0.1:
+                    continue
+                else:
+                    collision_force = contact_results.hydroelastic_contact_info(i).F_Ac_W()
+                    rotational = np.linalg.norm(collision_force.rotational())
+                    tranalational = np.linalg.norm(collision_force.translational())
+                    collision_severity = rotational + tranalational
+                    print(f"Collision detected! Severity: {collision_severity}")
+
         # contact_results = station.GetOutputPort("contact_results")
 
         # Enforce joint position and velocity limits... eventually

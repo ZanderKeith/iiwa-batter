@@ -4,18 +4,14 @@ from pydrake.all import (
 )
 
 from iiwa_batter import (
-    PACKAGE_ROOT,
-    NUM_JOINTS,
     CONTACT_DT,
+    NUM_JOINTS,
     PITCH_DT,
-    CONTROL_DT,
 )
-
 from iiwa_batter.physics import (
     PITCH_START_POSITION,
     find_ball_initial_velocity,
 )
-
 from iiwa_batter.swing_simulator import (
     parse_simulation_state,
     reset_simulator,
@@ -42,6 +38,11 @@ def test_setup_simulator():
     # Access the torque trajectory system from the diagram
     torque_trajectory_system = diagram.GetSubsystemByName("torque_trajectory_system")
     assert torque_trajectory_system is not None
+
+
+def test_rectilinear_torque_trajectory():
+    # Ensure the torque trajectory correctly follows rectilinear interpolation
+    pass
 
 
 def test_torque_trajectory_change_on_reset():
@@ -113,9 +114,14 @@ def test_compare_simulation_dt_final_state():
 
     initial_ball_velocity, _ = find_ball_initial_velocity(90, [0, 0, 0.6])
 
-    torque_trajectory = {0: np.array([50] * NUM_JOINTS), 0.2: np.array([100] * NUM_JOINTS)}
-    
-    simulator_contact_dt, diagram_contact_dt = setup_simulator(torque_trajectory=torque_trajectory, dt=CONTACT_DT)
+    torque_trajectory = {
+        0: np.array([50] * NUM_JOINTS),
+        0.2: np.array([100] * NUM_JOINTS),
+    }
+
+    simulator_contact_dt, diagram_contact_dt = setup_simulator(
+        torque_trajectory=torque_trajectory, dt=CONTACT_DT
+    )
 
     run_swing_simulation(
         simulator=simulator_contact_dt,
@@ -132,7 +138,9 @@ def test_compare_simulation_dt_final_state():
         simulator_contact_dt, diagram_contact_dt, "iiwa"
     )
 
-    simulator_pitch_dt, diagram_pitch_dt = setup_simulator(torque_trajectory=torque_trajectory, dt=PITCH_DT)
+    simulator_pitch_dt, diagram_pitch_dt = setup_simulator(
+        torque_trajectory=torque_trajectory, dt=PITCH_DT
+    )
 
     run_swing_simulation(
         simulator=simulator_pitch_dt,
@@ -179,3 +187,31 @@ def test_compare_simulation_dt_final_state():
     assert np.allclose(ball_position_a, ball_position_b, atol=1e-2)
     assert np.allclose(ball_velocity_a, ball_velocity_b, atol=1e-3)
 
+
+def test_bat_floor_collision_check():
+    # Ensure the collision check system works between the bat and the floor
+    pass
+
+
+def test_robot_bat_collision_check():
+    # Ensure the collision check system works between the robot and the bat
+
+    simulator_contact_dt, diagram_contact_dt = setup_simulator(
+        torque_trajectory={}, dt=PITCH_DT
+    )
+
+    run_swing_simulation(
+        simulator=simulator_contact_dt,
+        diagram=diagram_contact_dt,
+        start_time=0,
+        end_time=1.3,
+        initial_joint_positions=np.array([0] * NUM_JOINTS),
+        initial_joint_velocities=np.array([0] * NUM_JOINTS),
+        initial_ball_position=PITCH_START_POSITION,
+        initial_ball_velocity=np.zeros(3),
+    )
+
+
+def test_benchmark_simulation_handoff():
+    # See how much faster it is to run the simulation with a longer dt during the pitch and a shorter dt during the swing
+    pass
