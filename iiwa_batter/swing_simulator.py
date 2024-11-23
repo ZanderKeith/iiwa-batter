@@ -216,7 +216,14 @@ class CollisionCheckSystem(LeafSystem):
     that the ball won't get hardly any distance, meaning optimization will probably find a better solution.
     """
 
-    def __init__(self):
+    def __init__(self, collision_threshold=3):
+        """
+        Parameters
+        ----------
+        collision_threshold : int, optional
+            The number of timesteps to allow before early termination, by default 3
+            Decrease this to stop collisions faster, increase to get more accurate collision severity
+        """
         LeafSystem.__init__(self)
         self._contact_port = self.DeclareAbstractInputPort(
             "contact_results", Value(ContactResults())
@@ -227,7 +234,7 @@ class CollisionCheckSystem(LeafSystem):
         self.DeclareVectorOutputPort(
             "collision_severity", BasicVector(1), self.check_collision
         )
-
+        self.collision_threshold = collision_threshold
         self.reset()
         self.set_name("collision_check_system")
 
@@ -254,12 +261,11 @@ class CollisionCheckSystem(LeafSystem):
 
         if self.collision_severity[0] > 0:
             self.num_collision_timesteps += 1
-            if self.num_collision_timesteps > 10:
+            if self.num_collision_timesteps > self.collision_threshold:
                 self.early_terminate()
 
     def early_terminate(self):
-        # I couldn't figure out how else to stop my simulation when a collision is detected
-        # This is cheese but it works
+        # This is stupid but I couldn't figure out how else to stop the simulation when a collision is detected
         if self.terminated:
             return
         self.terminated = True
