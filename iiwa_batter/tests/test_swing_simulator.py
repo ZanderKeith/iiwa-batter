@@ -281,13 +281,13 @@ def test_joint_limits():
     # Ensure joint position limits are enforced
     robot_constraints = JOINT_CONSTRAINTS["iiwa14"]
 
-    simulator, diagram = setup_simulator(torque_trajectory={0:np.ones(NUM_JOINTS)*40}, dt=PITCH_DT, add_contact=False, robot_constraints=robot_constraints)
+    simulator, diagram = setup_simulator(torque_trajectory={0:np.ones(NUM_JOINTS)*80}, dt=PITCH_DT, add_contact=False, robot_constraints=robot_constraints)
 
     status_dict = run_swing_simulation(
         simulator=simulator,
         diagram=diagram,
         start_time=0,
-        end_time=1.0,
+        end_time=2.0,
         initial_joint_positions=np.array([0] * NUM_JOINTS),
         initial_joint_velocities=np.array([0] * NUM_JOINTS),
         initial_ball_position=PITCH_START_POSITION,
@@ -301,10 +301,37 @@ def test_joint_limits():
         joint_positions = state["iiwa"][0]
         joint_velocities = state["iiwa"][1]
         for joint, positions in robot_constraints["joint_range"].items():
-            assert positions[0] <= joint_positions[int(joint)-1] <= positions[1], f"Joint {joint} has position {joint_positions[int(joint)-1]} at time {time}"
+            assert positions[0]*1.01 <= joint_positions[int(joint)-1] <= positions[1]*1.01, f"Joint {joint} has position {joint_positions[int(joint)-1]} at time {time}"
             assert -robot_constraints["joint_velocity"][joint] <= joint_velocities[int(joint)-1] <= robot_constraints["joint_velocity"][joint], f"Joint {joint} has velocity {joint_velocities[int(joint)-1]} at time {time}"
 
+    simulator, diagram = setup_simulator(torque_trajectory={0:np.ones(NUM_JOINTS)*-80}, dt=PITCH_DT, add_contact=False, robot_constraints=robot_constraints)
 
+    status_dict = run_swing_simulation(
+        simulator=simulator,
+        diagram=diagram,
+        start_time=0,
+        end_time=2.0,
+        initial_joint_positions=np.array([0] * NUM_JOINTS),
+        initial_joint_velocities=np.array([0] * NUM_JOINTS),
+        initial_ball_position=PITCH_START_POSITION,
+        initial_ball_velocity=np.zeros(3),
+        record_state=True,
+    )
+
+    # Ensure the joint positions and velocities are within the limits at all times
+    state_dict = status_dict["state"]
+    for time, state in state_dict.items():
+        joint_positions = state["iiwa"][0]
+        joint_velocities = state["iiwa"][1]
+        for joint, positions in robot_constraints["joint_range"].items():
+            assert positions[0]*1.01 <= joint_positions[int(joint)-1] <= positions[1]*1.01, f"Joint {joint} has position {joint_positions[int(joint)-1]} at time {time}"
+            assert -robot_constraints["joint_velocity"][joint] <= joint_velocities[int(joint)-1] <= robot_constraints["joint_velocity"][joint], f"Joint {joint} has velocity {joint_velocities[int(joint)-1]} at time {time}"
+
+    # Ensure the cumulative limit break is greater than 1
+    enforce_joint_limit_system = diagram.GetSubsystemByName("enforce_joint_limit_system")
+    enforce_joint_limit_system_context = enforce_joint_limit_system.GetMyContextFromRoot(simulator.get_context())
+    cumulative_limit_break = enforce_joint_limit_system.GetOutputPort("cumulative_limit_break").Eval(enforce_joint_limit_system_context)
+    assert cumulative_limit_break[0] > 1
 
 def test_benchmark_simulation_handoff():
     # See how much faster it is to run the simulation with a longer dt during the pitch and a shorter dt during the swing

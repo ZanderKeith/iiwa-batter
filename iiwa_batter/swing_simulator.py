@@ -251,7 +251,7 @@ class EnforceJointLimitSystem(LeafSystem):
 
         velocity_overshoot = np.maximum(np.abs(joint_velocities) - self.joint_velocity_abs * self.limit_tolerance, 0)
         self.cumulative_limit_break += np.sum(velocity_overshoot)
-        torque_correction = -1000 * velocity_overshoot * np.sign(joint_velocities)
+        torque_correction = -1200 * (1 + 10*velocity_overshoot) * np.sign(joint_velocities)
         valid_torque = np.where(velocity_overshoot <= 0, desired_torque, 0)
 
         output_torque = np.where(velocity_overshoot > 0, valid_torque + torque_correction, desired_torque)
@@ -259,6 +259,7 @@ class EnforceJointLimitSystem(LeafSystem):
         output.SetFromVector(output_torque)
 
     def get_cumulative_limit_break(self, context, output):
+        # This is typically ~1, so scale it up in the loss function
         output.SetFromVector(self.cumulative_limit_break)
 
     def reset(self):
@@ -469,7 +470,6 @@ def run_swing_simulation(
     initial_ball_velocity,
     meshcat=None,
     check_dt=PITCH_DT * 100,
-    robot_constraints=None,
     record_state=False,
 ) -> dict:
     """Run a swing simulation from start_time to end_time with the given initial conditions.
