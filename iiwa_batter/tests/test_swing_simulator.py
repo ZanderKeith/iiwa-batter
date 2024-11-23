@@ -50,8 +50,8 @@ def test_torque_trajectory_change_on_reset():
     torque_trajectory_1 = {0: np.array([0] * NUM_JOINTS), 1: np.array([1] * NUM_JOINTS)}
     torque_trajectory_2 = {0: np.array([2] * NUM_JOINTS), 1: np.array([3] * NUM_JOINTS)}
 
-    simulator_1, diagram_1 = setup_simulator(torque_trajectory=torque_trajectory_1)
-    simulator_2, diagram_2 = setup_simulator(torque_trajectory=torque_trajectory_2)
+    simulator_1, diagram_1 = setup_simulator(torque_trajectory=torque_trajectory_1, add_contact=False)
+    simulator_2, diagram_2 = setup_simulator(torque_trajectory=torque_trajectory_2, add_contact=False)
 
     # Run the simulation with the first torque trajectory, reset, and run with the second torque trajectory
     run_swing_simulation(
@@ -189,7 +189,7 @@ def test_compare_simulation_dt_final_state():
 
 
 def test_self_collision_check():
-    # Ensure the collision check system works between the robot and the bat
+    # Ensure the collision check system works for self-collisions
 
     simulator_contact_dt, diagram_contact_dt = setup_simulator(
         torque_trajectory={}, dt=PITCH_DT
@@ -231,6 +231,47 @@ def test_non_self_collision_check():
     assert status_dict["result"] != "collision"
     assert "severity" not in status_dict.keys()
 
+def test_collision_doesnt_affect_final_state():
+    # Ensure adding the collision geometry doesn't affect the final state of the system
+
+    simulator_collision, diagram_collision = setup_simulator(
+        torque_trajectory={}, dt=PITCH_DT, add_contact=True
+    )
+    simulator_no_collision, diagram_no_collision = setup_simulator(
+        torque_trajectory={}, dt=PITCH_DT, add_contact=False
+    )
+
+    run_swing_simulation(
+        simulator=simulator_collision,
+        diagram=diagram_collision,
+        start_time=0,
+        end_time=0.5,
+        initial_joint_positions=np.array([0] * NUM_JOINTS),
+        initial_joint_velocities=np.array([0] * NUM_JOINTS),
+        initial_ball_position=PITCH_START_POSITION,
+        initial_ball_velocity=np.zeros(3),
+    )
+
+    run_swing_simulation(
+        simulator=simulator_no_collision,
+        diagram=diagram_no_collision,
+        start_time=0,
+        end_time=0.5,
+        initial_joint_positions=np.array([0] * NUM_JOINTS),
+        initial_joint_velocities=np.array([0] * NUM_JOINTS),
+        initial_ball_position=PITCH_START_POSITION,
+        initial_ball_velocity=np.zeros(3),
+    )
+
+    joint_positions_collision, joint_velocities_collision = parse_simulation_state(
+        simulator_collision, diagram_collision, "iiwa"
+    )
+    joint_positions_no_collision, joint_velocities_no_collision = parse_simulation_state(
+        simulator_no_collision, diagram_no_collision, "iiwa"
+    )
+
+    assert np.allclose(joint_positions_collision, joint_positions_no_collision)
+    assert np.allclose(joint_velocities_collision, joint_velocities_no_collision)
 
 def test_benchmark_simulation_handoff():
     # See how much faster it is to run the simulation with a longer dt during the pitch and a shorter dt during the swing

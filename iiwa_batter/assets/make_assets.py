@@ -223,36 +223,44 @@ def collision_cylinder(
     mesh_resolution = mesh_resolution * 100  # Coarser mesh
     return f"""<?xml version="1.0"?>
 <sdf version="1.7">
-    <model name="bat">
-    <pose>0 0 0 0 0 0</pose>
-    <link name="base">
-        <collision name="collision">
-        <geometry>
-            <cylinder>
-            <radius>{radius}</radius>
-            <length>{length}</length>
-            </cylinder>
-        </geometry>
-        <drake:proximity_properties>
-            <drake:compliant_hydroelastic/>
-            <drake:hydroelastic_modulus>{modulus}</drake:hydroelastic_modulus>
-            <drake:mu_dynamic>{mu_dynamic}</drake:mu_dynamic>
-            <drake:hunt_crossley_dissipation>{hunt_crossley_dissipation}</drake:hunt_crossley_dissipation>
-            <drake:mesh_resolution_hint>{mesh_resolution}</drake:mesh_resolution_hint>
-        </drake:proximity_properties>
-        </collision>
-        <visual name="visual">
-        <geometry>
-            <cylinder>
-            <radius>{radius}</radius>
-            <length>{length}</length>
-            </cylinder>
-        </geometry>
-        <material>
-            <diffuse>1.0 1.0 1.0 0.2</diffuse>
-        </material>
-        </visual>
-    </link>
+    <model name="collision_cylinder">
+        <pose>0 0 0 0 0 0</pose>
+        <link name="base">
+            <inertial>
+                <mass>0.0</mass>
+                <inertia>
+                    <ixx>0.0</ixx> <ixy>0.0</ixy> <ixz>0.0</ixz>
+                    <iyy>0.0</iyy> <iyz>0.0</iyz>
+                    <izz>0.0</izz>
+                </inertia>
+            </inertial>
+            <collision name="collision">
+                <geometry>
+                    <cylinder>
+                    <radius>{radius}</radius>
+                    <length>{length}</length>
+                    </cylinder>
+                </geometry>
+                <drake:proximity_properties>
+                    <drake:compliant_hydroelastic/>
+                    <drake:hydroelastic_modulus>{modulus}</drake:hydroelastic_modulus>
+                    <drake:mu_dynamic>{mu_dynamic}</drake:mu_dynamic>
+                    <drake:hunt_crossley_dissipation>{hunt_crossley_dissipation}</drake:hunt_crossley_dissipation>
+                    <drake:mesh_resolution_hint>{mesh_resolution}</drake:mesh_resolution_hint>
+                </drake:proximity_properties>
+            </collision>
+            <visual name="visual">
+                <geometry>
+                    <cylinder>
+                    <radius>{radius}</radius>
+                    <length>{length}</length>
+                    </cylinder>
+                </geometry>
+                <material>
+                    <diffuse>1.0 1.0 1.0 0.2</diffuse>
+                </material>
+            </visual>
+        </link>
     </model>
 </sdf>
 """
