@@ -482,7 +482,6 @@ def run_swing_simulation(
     meshcat=None,
     check_dt=PITCH_DT * 100,
     record_state=False,
-    final_torque=None
 ) -> dict:
     """Run a swing simulation from start_time to end_time with the given initial conditions.
 
@@ -536,7 +535,6 @@ def run_swing_simulation(
     ball = plant.GetModelInstanceByName("ball")
     plant.SetPositions(plant_context, iiwa, initial_joint_positions)
     plant.SetVelocities(plant_context, iiwa, initial_joint_velocities)
-
     plant.SetPositions(
         plant_context,
         ball,
@@ -547,9 +545,6 @@ def run_swing_simulation(
     )
     plant.SetPositions(plant_context, iiwa, initial_joint_positions)
     plant.SetVelocities(plant_context, iiwa, [0] * NUM_JOINTS)
-    if final_torque is not None:
-        plant.GetInputPort("iiwa_actuation").FixValue(plant_context, final_torque)
-
 
     # Run the pitch
     timebase = np.arange(start_time, end_time+check_dt, check_dt)

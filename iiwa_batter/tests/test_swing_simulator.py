@@ -73,7 +73,7 @@ def test_torque_trajectory_change_on_reset():
         simulator_1, diagram_1, "iiwa"
     )
 
-    reset_systems(simulator_1, diagram_1, new_torque_trajectory=torque_trajectory_2)
+    reset_systems(diagram_1, new_torque_trajectory=torque_trajectory_2)
 
     run_swing_simulation(
         simulator=simulator_1,
@@ -389,7 +389,7 @@ def test_simulation_state_preservation_no_trajectory():
     ball_position_a, ball_velocity_a = parse_simulation_state(simulator, diagram, "ball")
     end_time_a = parse_simulation_state(simulator, diagram, "time")
 
-    reset_systems(simulator, diagram)
+    reset_systems(diagram)
 
     run_swing_simulation(
         simulator=simulator,
@@ -405,7 +405,7 @@ def test_simulation_state_preservation_no_trajectory():
     joint_positions_i, joint_velocities_i = parse_simulation_state(simulator, diagram, "iiwa")
     ball_position_i, ball_velocity_i = parse_simulation_state(simulator, diagram, "ball")
 
-    reset_systems(simulator, diagram)
+    reset_systems(diagram)
 
     run_swing_simulation(
         simulator=simulator,
@@ -446,8 +446,6 @@ def test_nonzero_start_time():
 
     simulator, diagram = setup_simulator(torque_trajectory, dt=PITCH_DT, add_contact=False)
 
-    diagram.SetDefaultContext()
-
     run_swing_simulation(
         simulator=simulator,
         diagram=diagram,
@@ -462,6 +460,7 @@ def test_nonzero_start_time():
     joint_positions, joint_velocities = parse_simulation_state(simulator, diagram, "iiwa")
 
     assert np.all(joint_positions > 0)
+    assert np.all(joint_velocities > 0)
 
 
 def test_benchmark_simulation_handoff():
