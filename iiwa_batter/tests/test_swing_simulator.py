@@ -280,6 +280,34 @@ def test_collision_doesnt_affect_final_state():
     assert np.allclose(joint_velocities_collision, joint_velocities_no_collision)
 
 
+def test_large_torque_doesnt_crash():
+    # Ensure having a large torque doesn't crash the simulation
+
+    torque_trajectory = {
+        0: np.ones(NUM_JOINTS) * 1e8,
+        1: np.ones(NUM_JOINTS) * -1e8,
+    }
+
+    simulator, diagram = setup_simulator(
+        torque_trajectory=torque_trajectory, dt=PITCH_DT, add_contact=False
+    )
+
+    run_swing_simulation(
+        simulator=simulator,
+        diagram=diagram,
+        start_time=0,
+        end_time=2,
+        initial_joint_positions=np.array([0] * NUM_JOINTS),
+        initial_joint_velocities=np.array([0] * NUM_JOINTS),
+        initial_ball_position=PITCH_START_POSITION,
+        initial_ball_velocity=np.zeros(3),
+    )
+
+    end_time = parse_simulation_state(simulator, diagram, "time")
+
+    assert end_time == 2
+
+
 def test_joint_limits():
     # Ensure joint position limits are enforced
     robot_constraints = JOINT_CONSTRAINTS["iiwa14"]
@@ -478,9 +506,21 @@ def test_simulation_state_preservation_no_trajectory_alt():
     )
 
     # I would also be happy if this worked, but it throws an error
-    simulator_context = simulator.get_mutable_context()
-    simulator = Simulator(diagram, simulator_context)
+    # simulator_context = simulator.get_mutable_context()
+
+    # Doing it like this also doesn't work because it resets the time back to 0
+    context = diagram.CreateDefaultContext()
+    # Do I need to fill in the context with the state everything was just in?
+    simulator = Simulator(diagram, context)
+    start_time = parse_simulation_state(simulator, diagram, "time")
+    assert start_time != 0
+
+
     simulator.AdvanceTo(CONTROL_DT*4)
+
+    joint_positions_b, joint_velocities_b = parse_simulation_state(simulator, diagram, "iiwa")
+    ball_position_b, ball_velocity_b = parse_simulation_state(simulator, diagram, "ball")
+    end_time_b = parse_simulation_state(simulator, diagram, "time")
 
     joint_positions_b, joint_velocities_b = parse_simulation_state(simulator, diagram, "iiwa")
     ball_position_b, ball_velocity_b = parse_simulation_state(simulator, diagram, "ball")
