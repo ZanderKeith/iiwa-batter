@@ -27,7 +27,7 @@ from iiwa_batter.swing_simulator import (
     run_swing_simulation,
     setup_simulator,
 )
-from iiwa_batter.swing_optimization.trajectory_helpers import make_torque_trajectory
+from iiwa_batter.swing_optimization.stochastic_gradient_descent import make_torque_trajectory
 
 # This actually works somewhat well... I'm surprised it isn't unbearably slow
 # This shall be the backup plan in case the more 'intelligently designed' optimization doesn't work
@@ -228,6 +228,7 @@ def multi_full_trajectory(
     best_reward = -np.inf
     best_initial_position = original_initial_position
     for i in range(top_level_iterations):
+        pass
 
         # Determine the loss using the current initial position
 

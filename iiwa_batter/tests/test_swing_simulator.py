@@ -211,7 +211,7 @@ def test_self_collision_check():
     )
 
     assert status_dict["result"] == "collision"
-    assert status_dict["severity"] > 0
+    assert status_dict["contact_severity"] > 0
 
 
 def test_non_self_collision_check():
