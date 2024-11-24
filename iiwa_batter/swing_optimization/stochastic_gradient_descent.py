@@ -54,13 +54,13 @@ def initialize_control_vector(robot_constraints, num_timesteps):
     return control_vector
 
 
-def make_torque_trajectory(control_vector, num_joints, trajectory_timesteps):
-    """Make a torque trajectory from a control vector. First num_joints values are the initial joint positions, the rest are the torques at each timestep."""
+def make_torque_trajectory(control_vector, trajectory_timesteps):
+    """Make a torque trajectory from a control vector."""
     torque_trajectory = {}
     for i in range(len(trajectory_timesteps)):
         timestep = trajectory_timesteps[i]
         torque_trajectory[timestep] = control_vector[
-            num_joints * i: num_joints * (i + 1)
+            NUM_JOINTS * i: NUM_JOINTS * (i + 1)
         ]
     return torque_trajectory
 

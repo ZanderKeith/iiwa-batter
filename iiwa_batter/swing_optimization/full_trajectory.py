@@ -27,7 +27,11 @@ from iiwa_batter.swing_simulator import (
     run_swing_simulation,
     setup_simulator,
 )
-from iiwa_batter.swing_optimization.stochastic_gradient_descent import make_torque_trajectory
+from iiwa_batter.swing_optimization.stochastic_gradient_descent import (
+    make_torque_trajectory,
+    perturb_vector,
+    descent_step,
+)
 
 # This actually works somewhat well... I'm surprised it isn't unbearably slow
 # This shall be the backup plan in case the more 'intelligently designed' optimization doesn't work
@@ -42,7 +46,7 @@ def full_trajectory_reward(
 ):
 
     trajectory_timesteps = np.arange(0, ball_time_of_flight+CONTROL_DT, CONTROL_DT)
-    torque_trajectory = make_torque_trajectory(control_vector, NUM_JOINTS, trajectory_timesteps)
+    torque_trajectory = make_torque_trajectory(control_vector, trajectory_timesteps)
     reset_systems(diagram, torque_trajectory)
 
     status_dict = run_swing_simulation(
@@ -52,6 +56,7 @@ def full_trajectory_reward(
         end_time=ball_time_of_flight*FLIGHT_TIME_MULTIPLE,
         initial_joint_positions=initial_joint_positions,
         initial_joint_velocities=np.zeros(NUM_JOINTS),
+        initial_ball_position=PITCH_START_POSITION,
         initial_ball_velocity=ball_initial_velocity,
     )
 
@@ -68,115 +73,64 @@ def full_trajectory_reward(
         multiplier = ball_distance_multiplier(land_location)
         return distance * multiplier
 
-def single_full_trajectory(
+def single_full_trajectory_torque_only(
     simulator: Simulator,
-    station: Diagram,
-    robot_constraints,
+    diagram: Diagram,
+    initial_joint_positions,
     original_control_vector,
-    control_timesteps,
     ball_initial_velocity,
-    time_of_flight,
+    ball_time_of_flight,
+    torque_constraints,
     learning_rate=1,
+    iterations=10,
 ):
-    """Run stochastic optimization to find the best control vector for the full swing trajectory.
+    """Run stochastic optimization on the control vector for a single full trajectory, only updating the torque values"""
 
-    Parameters
-    ----------
-    simulator : Simulator
-        The simulator to run the trajectory on. Already initialized with setup_simulator.
-    station : Diagram
-        The station to run the trajectory on.
-    robot_constraints : dict
-        The constraints for the robot.
-    original_control_vector : np.ndarray
-        The original control vector to optimize.
-    control_timesteps : np.ndarray
-        The timesteps for the control vector.
-    ball_initial_velocity : np.ndarray
-        The initial velocity of the ball.
-    time_of_flight : float
-        Time of flight for the ball from the pitch to the strike zone.
-    learning_rate : float, optional
-        The learning rate for the optimization, by default 0.01.
+    present_control_vector = original_control_vector
 
-    Returns
-    -------
-    updated_control_vector : np.ndarray
-        Control vector that has been moved in the direction of the gradient.
-    original_reward : float
-        Reward from the simulation with the original control vector.
-    reward_difference: float
-        Difference in reward between the original and perturbed control vectors. If perturbed was better, will be positive.
-    """
-
-    position_variance = np.deg2rad(1)
-    torque_variance = 1  # About 1% of the max torque
-
-    num_joints = len(robot_constraints["torque"])
-
-    # Determine the loss from this control vector
-    torque_trajectory = make_torque_trajectory(
-        original_control_vector, num_joints, control_timesteps
-    )
-    reset_systems(simulator)
-    original_reward = run_full_trajectory(
-        None,
-        simulator,
-        station,
-        original_control_vector[:num_joints],
-        [PITCH_START_POSITION, ball_initial_velocity],
-        time_of_flight,
-        robot_constraints,
-        torque_trajectory,
-    )
-
-    # Perturb the control vector, ensuring that the joint constraints are still satisfied
-    perturbed_vector = np.empty_like(original_control_vector)
-    for i, joint in enumerate(robot_constraints["joint_range"].values()):
-        perturbation = np.random.normal(0, position_variance)
-        capped_perturbation = np.clip(
-            original_control_vector[i] + perturbation, joint[0], joint[1]
+    best_reward = -np.inf
+    best_control_vector = present_control_vector
+    for i in range(iterations):
+        present_reward = full_trajectory_reward(
+            simulator,
+            diagram,
+            initial_joint_positions,
+            original_control_vector,
+            ball_initial_velocity,
+            ball_time_of_flight,
         )
-        perturbed_vector[i] = capped_perturbation - original_control_vector[i]
 
-    for t in range(len(control_timesteps)):
-        for i, torque in enumerate(robot_constraints["torque"].values()):
-            perturbation = np.random.normal(0, torque_variance)
-            capped_perturbation = np.clip(
-                original_control_vector[num_joints + t * num_joints + i] + perturbation,
-                -torque,
-                torque,
-            )
-            perturbed_vector[num_joints + t * num_joints + i] = (
-                capped_perturbation
-                - original_control_vector[num_joints + t * num_joints + i]
-            )
+        if present_reward > best_reward:
+            best_reward = present_reward
+            best_control_vector = present_control_vector
 
-    perturbed_control_vector = original_control_vector + perturbed_vector
-    perturbed_torque_trajectory = make_torque_trajectory(
-        perturbed_control_vector, num_joints, control_timesteps
-    )
+        perturbed_control_vector = perturb_vector(original_control_vector, 1, torque_constraints, -torque_constraints)
+        perturbed_reward = full_trajectory_reward(
+            simulator,
+            diagram,
+            initial_joint_positions,
+            perturbed_control_vector,
+            ball_initial_velocity,
+            ball_time_of_flight,
+        )
 
-    reset_systems(simulator)
-    perturbed_reward = run_full_trajectory(
-        None,
-        simulator,
-        station,
-        perturbed_control_vector[:num_joints],
-        [PITCH_START_POSITION, ball_initial_velocity],
-        time_of_flight,
-        robot_constraints,
-        perturbed_torque_trajectory,
-    )
+        if perturbed_reward > best_reward:
+            best_reward = perturbed_reward
+            best_control_vector = perturbed_control_vector
 
-    updated_control_vector = (
-        original_control_vector
-        + learning_rate * (perturbed_reward - original_reward) * perturbed_vector
-    )
+        updated_control_vector = descent_step(
+            original_control_vector,
+            perturbed_control_vector,
+            present_reward,
+            perturbed_reward,
+            learning_rate,
+            torque_constraints,
+            -torque_constraints,
+        )
 
-    reward_difference = perturbed_reward - original_reward
+        present_control_vector = updated_control_vector
 
-    return updated_control_vector, original_reward, reward_difference
+    return best_control_vector, best_reward
 
 def multi_full_trajectory(
     targets,

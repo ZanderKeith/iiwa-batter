@@ -20,7 +20,6 @@ def test_make_torque_trajectory():
     assert np.all(torque_trajectory[1] == np.array([1, 1, 1]))
     assert np.all(torque_trajectory[4] == np.array([4, 4, 4]))
 
-
 def test_perturbed_vector_bounds():
     # Ensure the perturbed vector is always within the bounds
     original_vector = np.array([0, 0, 0])
