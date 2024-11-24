@@ -49,28 +49,32 @@ def test_make_torque_trajectory():
 
 def test_perturbed_vector_bounds():
     # Ensure the perturbed vector is always within the bounds
-    original_vector = np.array([0, 0, 0])
+    np.random.seed(0)
+    original_vector = np.zeros((100, NUM_JOINTS))
     variance = 10
-    upper_limits = np.array([1, 1, 1])
-    lower_limits = np.array([-1, -1, -1])
+    upper_limits = np.ones(NUM_JOINTS)
+    lower_limits = -np.ones(NUM_JOINTS)
 
-    for _ in range(100):
+    for _ in range(999):
         perturbed_vector = perturb_vector(original_vector, variance, upper_limits, lower_limits)
-        assert np.all(perturbed_vector <= upper_limits)
-        assert np.all(perturbed_vector >= lower_limits)
+        for i in range(NUM_JOINTS):
+            assert np.all(perturbed_vector[:, i] <= upper_limits[i])
+            assert np.all(perturbed_vector[:, i] >= lower_limits[i])
 
 
 def test_descent_step_bounds():
     # Ensure the descent step is always within the bounds
-    original_vector = np.array([0, 0, 0])
-    perturbed_vector = np.array([1, 1, 1])
+    original_vector = np.zeros((100, NUM_JOINTS))
+    perturbed_vector = np.ones((100, NUM_JOINTS))
     original_reward = 0
     perturbed_reward = 1
     learning_rate = 500
-    upper_limits = np.array([1, 1, 1])
-    lower_limits = np.array([-1, -1, -1])
+    upper_limits = np.ones(NUM_JOINTS)
+    lower_limits = -np.ones(NUM_JOINTS)
 
     clipped_vector = descent_step(original_vector, perturbed_vector, original_reward, perturbed_reward, learning_rate, upper_limits, lower_limits)
 
-    assert np.all(clipped_vector <= upper_limits)
-    assert np.all(clipped_vector >= lower_limits)
+    for i in range(NUM_JOINTS):
+        assert np.all(clipped_vector[:, i] <= upper_limits[i])
+        assert np.all(clipped_vector[:, i] >= lower_limits[i])
+    
