@@ -45,11 +45,10 @@ def find_initial_positions(simulator, diagram, robot_constraints, num_positions)
 
 
 def initialize_control_vector(robot_constraints, num_timesteps):
-    control_vector = np.zeros(num_timesteps * NUM_JOINTS)
+    control_vector = np.zeros((num_timesteps, NUM_JOINTS))
 
-    for t in range(num_timesteps):
-        for i, torque in enumerate(robot_constraints["torque"].values()):
-            control_vector[t * NUM_JOINTS + i] = np.random.uniform(-torque, torque)
+    for i, torque in enumerate(robot_constraints["torque"].values()):
+        control_vector[:, i] = np.random.uniform(-torque, torque, num_timesteps)
 
     return control_vector
 
@@ -59,9 +58,7 @@ def make_torque_trajectory(control_vector, trajectory_timesteps):
     torque_trajectory = {}
     for i in range(len(trajectory_timesteps)):
         timestep = trajectory_timesteps[i]
-        torque_trajectory[timestep] = control_vector[
-            NUM_JOINTS * i: NUM_JOINTS * (i + 1)
-        ]
+        torque_trajectory[timestep] = control_vector[i]
     return torque_trajectory
 
 
