@@ -61,7 +61,11 @@ def full_trajectory_reward(
 
     result = status_dict["result"]
     if result == "collision":
-        return -1e-3 * status_dict["contact_severity"]
+        severity = status_dict["contact_severity"]
+        if severity <= 10:
+            return (-1 * severity) - 20
+        else:
+            return (-10 * np.log10(severity)) - 20
     elif result == "miss":
         return -10 * status_dict["closest_approach"]
     elif result == "hit":
@@ -146,6 +150,7 @@ def single_full_trajectory_torque_and_position(
     torque_constraints,
     learning_rate=1,
     iterations=10,
+    return_best=True,
 ):
     """Run stochastic optimization on the control vector for a single full trajectory, only updating the torque values"""
 
@@ -170,7 +175,7 @@ def single_full_trajectory_torque_and_position(
             best_initial_position = present_initial_position
             best_control_vector = present_control_vector
 
-        perturbed_initial_position = perturb_vector(present_initial_position, np.rad2deg(1), position_constraints_upper, position_constraints_lower)
+        perturbed_initial_position = perturb_vector(present_initial_position, np.deg2rad(1), position_constraints_upper, position_constraints_lower)
         perturbed_control_vector = perturb_vector(present_control_vector, 1, torque_constraints, -torque_constraints)
         perturbed_reward = full_trajectory_reward(
             simulator,
@@ -208,7 +213,13 @@ def single_full_trajectory_torque_and_position(
         present_control_vector = updated_control_vector
         present_initial_position = updated_initial_position
 
-    return best_initial_position, best_control_vector, best_reward
+    if return_best:
+        return best_initial_position, best_control_vector, best_reward
+    else: 
+        previous_reward = present_reward
+        next_initial_position = updated_initial_position
+        next_control_vector = updated_control_vector
+        return present_initial_position, present_control_vector, present_reward, next_initial_position, next_control_vector
 
 
 def multi_full_trajectory(

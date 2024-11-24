@@ -43,6 +43,8 @@ def find_initial_positions(simulator, diagram, robot_constraints, num_positions)
 
         initial_positions.append(candidate_position)
 
+    return initial_positions
+
 
 def initialize_control_vector(robot_constraints, num_timesteps):
     control_vector = np.zeros((num_timesteps, NUM_JOINTS))

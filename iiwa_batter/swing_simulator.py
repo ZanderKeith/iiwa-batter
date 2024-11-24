@@ -483,7 +483,7 @@ def run_swing_simulation(
     initial_ball_position,
     initial_ball_velocity,
     meshcat=None,
-    check_dt=PITCH_DT * 10,
+    check_dt=PITCH_DT,
     record_state=False,
 ) -> dict:
     """Run a swing simulation from start_time to end_time with the given initial conditions.
