@@ -277,10 +277,12 @@ class CollisionCheckSystem(LeafSystem):
     that the ball won't get hardly any distance, meaning optimization will probably find a better solution.
     """
 
-    def __init__(self, collision_threshold=3):
+    def __init__(self, simulator_dt, collision_threshold=3):
         """
         Parameters
         ----------
+        simulator_dt : float
+            The timestep of the simulator, used to scale the collision severity
         collision_threshold : int, optional
             The number of timesteps to allow before early termination, by default 3
             Decrease this to stop collisions faster, increase to get more accurate collision severity
@@ -295,6 +297,7 @@ class CollisionCheckSystem(LeafSystem):
         self.DeclareVectorOutputPort(
             "collision_severity", BasicVector(1), self.check_collision
         )
+        self.simulator_dt = simulator_dt
         self.collision_threshold = collision_threshold
         self.reset()
         self.set_name("collision_check_system")
@@ -318,7 +321,7 @@ class CollisionCheckSystem(LeafSystem):
                     tranalational = np.linalg.norm(collision_force.translational())
                     self.collision_severity[0] += rotational + tranalational
 
-        output.SetFromVector(self.collision_severity)
+        output.SetFromVector(self.collision_severity*CONTACT_DT/self.simulator_dt)
 
         if self.collision_severity[0] > 0:
             self.num_collision_timesteps += 1
@@ -386,7 +389,7 @@ def setup_simulator(torque_trajectory, dt=CONTACT_DT, meshcat=None, plot_diagram
             station.GetInputPort("iiwa_actuation"),
         )
 
-    collision_check_system = builder.AddSystem(CollisionCheckSystem())
+    collision_check_system = builder.AddSystem(CollisionCheckSystem(simulator_dt=dt))
     builder.Connect(
         station.GetOutputPort("contact_results"),
         collision_check_system.GetInputPort("contact_results"),

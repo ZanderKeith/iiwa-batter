@@ -10,7 +10,6 @@ from iiwa_batter import (
     PITCH_DT,
     CONTROL_DT,
     NUM_JOINTS,
-    PITCH_DT,
 )
 
 from iiwa_batter.physics import (
@@ -61,8 +60,8 @@ def full_trajectory_reward(
     )
 
     result = status_dict["result"]
-    if result == "contact":
-        return -10 * status_dict["contact_severity"]
+    if result == "collision":
+        return -1e-3 * status_dict["contact_severity"]
     elif result == "miss":
         return -10 * status_dict["closest_approach"]
     elif result == "hit":
@@ -72,6 +71,8 @@ def full_trajectory_reward(
         distance = np.linalg.norm(land_location)
         multiplier = ball_distance_multiplier(land_location)
         return distance * multiplier
+    else:
+        raise ValueError(f"Unknown result: {result}")
 
 def single_full_trajectory_torque_only(
     simulator: Simulator,
@@ -90,12 +91,12 @@ def single_full_trajectory_torque_only(
 
     best_reward = -np.inf
     best_control_vector = present_control_vector
-    for i in range(iterations):
+    for _ in range(iterations):
         present_reward = full_trajectory_reward(
             simulator,
             diagram,
             initial_joint_positions,
-            original_control_vector,
+            present_control_vector,
             ball_initial_velocity,
             ball_time_of_flight,
         )
@@ -104,7 +105,7 @@ def single_full_trajectory_torque_only(
             best_reward = present_reward
             best_control_vector = present_control_vector
 
-        perturbed_control_vector = perturb_vector(original_control_vector, 1, torque_constraints, -torque_constraints)
+        perturbed_control_vector = perturb_vector(present_control_vector, 1, torque_constraints, -torque_constraints)
         perturbed_reward = full_trajectory_reward(
             simulator,
             diagram,
@@ -119,7 +120,7 @@ def single_full_trajectory_torque_only(
             best_control_vector = perturbed_control_vector
 
         updated_control_vector = descent_step(
-            original_control_vector,
+            present_control_vector,
             perturbed_control_vector,
             present_reward,
             perturbed_reward,
@@ -131,6 +132,84 @@ def single_full_trajectory_torque_only(
         present_control_vector = updated_control_vector
 
     return best_control_vector, best_reward
+
+
+def single_full_trajectory_torque_and_position(
+    simulator: Simulator,
+    diagram: Diagram,
+    original_initial_joint_positions,
+    original_control_vector,
+    ball_initial_velocity,
+    ball_time_of_flight,
+    position_constraints_upper,
+    position_constraints_lower,
+    torque_constraints,
+    learning_rate=1,
+    iterations=10,
+):
+    """Run stochastic optimization on the control vector for a single full trajectory, only updating the torque values"""
+
+    present_initial_position = original_initial_joint_positions
+    present_control_vector = original_control_vector
+
+    best_reward = -np.inf
+    best_initial_position = present_initial_position
+    best_control_vector = present_control_vector
+    for i in range(iterations):
+        present_reward = full_trajectory_reward(
+            simulator,
+            diagram,
+            present_initial_position,
+            present_control_vector,
+            ball_initial_velocity,
+            ball_time_of_flight,
+        )
+
+        if present_reward > best_reward:
+            best_reward = present_reward
+            best_initial_position = present_initial_position
+            best_control_vector = present_control_vector
+
+        perturbed_initial_position = perturb_vector(present_initial_position, np.rad2deg(1), position_constraints_upper, position_constraints_lower)
+        perturbed_control_vector = perturb_vector(present_control_vector, 1, torque_constraints, -torque_constraints)
+        perturbed_reward = full_trajectory_reward(
+            simulator,
+            diagram,
+            perturbed_initial_position,
+            perturbed_control_vector,
+            ball_initial_velocity,
+            ball_time_of_flight,
+        )
+
+        if perturbed_reward > best_reward:
+            best_reward = perturbed_reward
+            best_initial_position = perturbed_initial_position
+            best_control_vector = perturbed_control_vector
+
+        updated_initial_position = descent_step(
+            present_initial_position,
+            perturbed_initial_position,
+            present_reward,
+            perturbed_reward,
+            learning_rate,
+            position_constraints_upper,
+            position_constraints_lower,
+        )
+        updated_control_vector = descent_step(
+            present_control_vector,
+            perturbed_control_vector,
+            present_reward,
+            perturbed_reward,
+            learning_rate,
+            torque_constraints,
+            -torque_constraints,
+        )
+
+        present_control_vector = updated_control_vector
+        present_initial_position = updated_initial_position
+
+    return best_initial_position, best_control_vector, best_reward
+
 
 def multi_full_trajectory(
     targets,

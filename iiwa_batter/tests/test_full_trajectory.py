@@ -17,6 +17,7 @@ from iiwa_batter.swing_optimization.stochastic_gradient_descent import (
 )
 from iiwa_batter.swing_optimization.full_trajectory import (
     single_full_trajectory_torque_only,
+    single_full_trajectory_torque_and_position,
     multi_full_trajectory,
 )
 
@@ -47,7 +48,37 @@ def test_run_single_full_trajectory_torque_only():
 
 
 def test_run_single_full_trajectory_torque_and_position():
-    pass
+    # Try running the trajectory optimization with both the torque and position values being updated and ensure nothing breaks
+    np.random.seed(0)
+    robot_constraints = JOINT_CONSTRAINTS["iiwa14"]
+    torque_constraints = np.array([int(torque) for torque in robot_constraints["torque"].values()])
+    position_constraints_upper = np.array([joint[1] for joint in robot_constraints["joint_range"].values()])
+    position_constraints_lower = np.array([joint[0] for joint in robot_constraints["joint_range"].values()])
+
+    ball_initial_velocity, ball_time_of_flight = find_ball_initial_velocity(90, [0, 0, 0.6])
+    trajectory_timesteps = np.arange(0, ball_time_of_flight+CONTROL_DT, CONTROL_DT)
+    initial_joint_position = np.array([0]*NUM_JOINTS)
+    initial_control_vector = initialize_control_vector(robot_constraints, len(trajectory_timesteps))
+
+    simulator, diagram = setup_simulator(torque_trajectory={}, dt=PITCH_DT, robot_constraints=robot_constraints)
+    best_initial_position, best_control_vector, best_reward = single_full_trajectory_torque_and_position(
+        simulator=simulator,
+        diagram=diagram,
+        original_initial_joint_positions=initial_joint_position,
+        original_control_vector=initial_control_vector,
+        ball_initial_velocity=ball_initial_velocity,
+        ball_time_of_flight=ball_time_of_flight,
+        position_constraints_upper=position_constraints_upper,
+        position_constraints_lower=position_constraints_lower,
+        torque_constraints=torque_constraints,
+    )
+
+    assert np.all(best_initial_position <= position_constraints_upper)
+    assert np.all(best_initial_position >= position_constraints_lower)
+    for i in range(NUM_JOINTS):
+        assert np.all(best_control_vector[:, i] <= torque_constraints[i])
+        assert np.all(best_control_vector[:, i] >= -torque_constraints[i])
+    
 
 # def test_run_multi_full_trajectory():
 #     # Try running the full trajectory optimization
