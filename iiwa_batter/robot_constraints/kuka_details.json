@@ -3,6 +3,7 @@
         "name": "LBR iiwa 14 R820",
         "rated_payload": 14,
         "arm_extension": 0.82,
+        "model": "iiwa14",
         "joint_range_deg": {
             "1": [-170, 170],
             "2": [-120, 120],
@@ -33,6 +34,7 @@
     },
     "kr6r900": {
         "name": "KR 6 R900 CR",
+        "model": "kr6r900",
         "rated_payload": 6,
         "arm_extension": 0.9,
         "skipped_joint": "3",
@@ -77,6 +79,7 @@
     },
     "slugger": {
         "name": "SLUGGER",
+        "model": "iiwa14",
         "joint_range_deg": {
             "1": [-170, 170],
             "2": [-120, 120],

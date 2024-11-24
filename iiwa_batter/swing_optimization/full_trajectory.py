@@ -1,8 +1,32 @@
-from iiwa_batter.physics import PITCH_START_POSITION
+import numpy as np
+from multiprocessing import Pool
+
+from pydrake.all import (
+    Diagram,
+    Simulator,
+)
+from iiwa_batter import (
+    CONTACT_DT,
+    PITCH_DT,
+    CONTROL_DT,
+    NUM_JOINTS,
+    PITCH_DT,
+)
+
+from iiwa_batter.physics import (
+    PITCH_START_POSITION,
+    find_ball_initial_velocity,
+)
+from iiwa_batter.robot_constraints.get_joint_constraints import JOINT_CONSTRAINTS
+from iiwa_batter.swing_simulator import (
+    parse_simulation_state,
+    reset_systems,
+    run_swing_simulation,
+    setup_simulator,
+)
 
 # This actually works somewhat well... I'm surprised it isn't unbearably slow
 # This shall be the backup plan in case the more 'intelligently designed' optimization doesn't work
-
 
 def initialize_control_vector(robot_constraints, num_timesteps):
     # First index is the initial position
@@ -22,8 +46,7 @@ def initialize_control_vector(robot_constraints, num_timesteps):
 
     return control_vector
 
-
-def stochastic_optimization_full_trajectory(
+def single_full_trajectory(
     simulator: Simulator,
     station: Diagram,
     robot_constraints,
@@ -132,3 +155,38 @@ def stochastic_optimization_full_trajectory(
     reward_difference = perturbed_reward - original_reward
 
     return updated_control_vector, original_reward, reward_difference
+
+def multi_full_trajectory(
+    targets,
+    robot_constraints,
+    original_initial_position,
+    simulation_dt=CONTACT_DT,
+    substeps=8, # How many single runs to do between updating the initial position
+    save_interval=100,
+    top_level_iterations=1000, # How many times to update the initial position
+):
+    # Initialize the simulator and diagram
+    # Keeping these separate for each trajectory, can't re-make them over and over or it causes memory issues
+    target_details = {}
+    for i, target in targets:
+
+        # Determine how many timesteps are needed for the control vector
+
+
+        simulator, diagram = setup_simulator(
+            torque_trajectory={},
+            dt = simulation_dt,
+            robot_constraints=robot_constraints,
+            model_urdf=robot_constraints["model"]
+        )
+        target_dict = {
+            "simulator": simulator,
+            "diagram": diagram,
+            "target": target,
+            "substeps": substeps,
+            "initial_position": original_initial_position,
+        }
+        target_details[i] = target_dict
+
+    
+
