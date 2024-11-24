@@ -186,7 +186,11 @@ class TorqueTrajectorySystem(LeafSystem):
         time = context.get_time()
         # Perform rectilinear interpolation by finding the largest timestep that is less than or equal to the current time
         timestep = self.programmed_timesteps[self.programmed_timesteps <= time][-1]
+        # if time in [0.0, 0.038, 0.02, 0.018000000000000002]:
+        #     output.SetFromVector(np.array([0] * NUM_JOINTS))
+        # else:
         output.SetFromVector(self.torque_trajectory[timestep])
+        print(f"Time: {time}\nTorque: {self.torque_trajectory[timestep][0]}")
 
         # This is a hack to make the contact simulation run every timestep, since I want to
         # stop the expensive hydroelastic contact ASAP if possible
@@ -525,12 +529,14 @@ def run_swing_simulation(
     plant: Diagram = station.GetSubsystemByName("plant")
     collision_check_system: LeafSystem = diagram.GetSubsystemByName("collision_check_system")
     simulator_context = simulator.get_context()
-    station_context = station.GetMyContextFromRoot(simulator_context)
     plant_context = plant.GetMyContextFromRoot(simulator_context)
     collision_check_system_context = collision_check_system.GetMyContextFromRoot(simulator_context)
     # context.SetTime(start_time) # TODO: Is this needed?
     # plant_context.SetTime(start_time) # TODO: Is this needed?
-    simulator.AdvanceTo(start_time)
+    #simulator.AdvanceTo(start_time)
+    simulator_context.SetTime(start_time)
+    simulator.get_mutable_context().SetTime(start_time)
+    simulator.Initialize()
 
     # Set the initial states of the iiwa and the ball
     iiwa = plant.GetModelInstanceByName("iiwa")
