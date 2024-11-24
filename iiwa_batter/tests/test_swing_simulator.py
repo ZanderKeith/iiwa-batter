@@ -376,9 +376,9 @@ def test_simulation_state_preservation():
         CONTROL_DT*3: np.ones(NUM_JOINTS) * -40
     }
 
-    simulator, diagram = setup_simulator(torque_trajectory=torque_trajectory, dt=PITCH_DT, add_contact=False, robot_constraints=robot_constraints)
+    simulator, diagram = setup_simulator(torque_trajectory=torque_trajectory, dt=PITCH_DT*20, add_contact=False, robot_constraints=None)
 
-    run_swing_simulation(
+    status_dict_a = run_swing_simulation(
         simulator=simulator,
         diagram=diagram,
         start_time=0,
@@ -387,6 +387,7 @@ def test_simulation_state_preservation():
         initial_joint_velocities=np.array([0] * NUM_JOINTS),
         initial_ball_position=PITCH_START_POSITION,
         initial_ball_velocity=np.zeros(3),
+        record_state=True,
     )
 
     joint_positions_a, joint_velocities_a = parse_simulation_state(simulator, diagram, "iiwa")
@@ -395,7 +396,7 @@ def test_simulation_state_preservation():
 
     reset_simulator(simulator, diagram)
 
-    run_swing_simulation(
+    status_dict_i = run_swing_simulation(
         simulator=simulator,
         diagram=diagram,
         start_time=0,
@@ -407,13 +408,16 @@ def test_simulation_state_preservation():
         record_state=True,
     )
 
+    simulator_context = simulator.get_context()
+
     joint_positions_i, joint_velocities_i = parse_simulation_state(simulator, diagram, "iiwa")
     ball_position_i, ball_velocity_i = parse_simulation_state(simulator, diagram, "ball")
     end_time_i = parse_simulation_state(simulator, diagram, "time")
+    #final_torque = parse_simulation_state(simulator, diagram, "iiwa_actuation")
 
     reset_simulator(simulator, diagram)
 
-    run_swing_simulation(
+    status_dict_b = run_swing_simulation(
         simulator=simulator,
         diagram=diagram,
         start_time=CONTROL_DT*2,
@@ -422,11 +426,16 @@ def test_simulation_state_preservation():
         initial_joint_velocities=joint_velocities_i,
         initial_ball_position=ball_position_i,
         initial_ball_velocity=ball_velocity_i,
+        record_state=True,
     )
 
     joint_positions_b, joint_velocities_b = parse_simulation_state(simulator, diagram, "iiwa")
     ball_position_b, ball_velocity_b = parse_simulation_state(simulator, diagram, "ball")
     end_time_b = parse_simulation_state(simulator, diagram, "time")
+
+    state_a = status_dict_a["state"]
+    state_i = status_dict_i["state"]
+    state_b = status_dict_b["state"]
 
     assert end_time_a == end_time_b
     assert np.allclose(ball_position_a, ball_position_b)

@@ -420,6 +420,12 @@ def reset_simulator(simulator: Simulator, diagram: Diagram, new_torque_trajector
 
     collision_check_system = diagram.GetSubsystemByName("collision_check_system")
     collision_check_system.reset()
+    try:
+        enforce_joint_limit_system = diagram.GetSubsystemByName("enforce_joint_limit_system")
+        enforce_joint_limit_system.reset()
+    except RuntimeError:
+        # No joint limits have been set, so system doesn't exist
+        pass
 
     simulator.Initialize()
 
@@ -459,6 +465,10 @@ def parse_simulation_state(simulator: Simulator, diagram: Diagram, system_name: 
         return sweet_spot_position
     elif system_name == "time":
         return simulator_context.get_time()
+    elif system_name == "iiwa_actuation":
+        plant_context = plant.GetMyContextFromRoot(simulator_context)
+        iiwa = plant.GetModelInstanceByName("iiwa")
+        return plant.GetInputPort("iiwa_actuation").Eval(plant_context)
 
 
 def run_swing_simulation(
@@ -473,6 +483,7 @@ def run_swing_simulation(
     meshcat=None,
     check_dt=PITCH_DT * 100,
     record_state=False,
+    final_torque=None
 ) -> dict:
     """Run a swing simulation from start_time to end_time with the given initial conditions.
 
@@ -523,10 +534,10 @@ def run_swing_simulation(
 
     # Set the initial states of the iiwa and the ball
     iiwa = plant.GetModelInstanceByName("iiwa")
+    ball = plant.GetModelInstanceByName("ball")
     plant.SetPositions(plant_context, iiwa, initial_joint_positions)
     plant.SetVelocities(plant_context, iiwa, initial_joint_velocities)
 
-    ball = plant.GetModelInstanceByName("ball")
     plant.SetPositions(
         plant_context,
         ball,
@@ -535,14 +546,15 @@ def run_swing_simulation(
     plant.SetVelocities(
         plant_context, ball, np.concatenate([np.zeros(3), initial_ball_velocity])
     )
-
-    # Set initial iiwa state
-    iiwa = plant.GetModelInstanceByName("iiwa")
     plant.SetPositions(plant_context, iiwa, initial_joint_positions)
     plant.SetVelocities(plant_context, iiwa, [0] * NUM_JOINTS)
+    if final_torque is not None:
+        plant.GetInputPort("iiwa_actuation").FixValue(plant_context, final_torque)
+
 
     # Run the pitch
-    timebase = np.arange(start_time, end_time + check_dt, check_dt)
+    timebase = np.arange(start_time, end_time+check_dt, check_dt)
+    timebase[-1] = end_time # Try to avoid floating point hoo-hah
 
     if meshcat is not None:
         meshcat.StartRecording()
@@ -566,9 +578,6 @@ def run_swing_simulation(
                 "iiwa": parse_simulation_state(simulator, diagram, "iiwa"),
                 "ball": parse_simulation_state(simulator, diagram, "ball"),
             }
-
-    if timebase[-1] < end_time:
-        simulator.AdvanceTo(end_time)
 
     if meshcat is not None:
         meshcat.PublishRecording()
