@@ -73,7 +73,7 @@ def stochastic_optimization_full_trajectory(
     torque_trajectory = make_torque_trajectory(
         original_control_vector, num_joints, control_timesteps
     )
-    reset_simulator(simulator)
+    reset_systems(simulator)
     original_reward = run_full_trajectory(
         None,
         simulator,
@@ -112,7 +112,7 @@ def stochastic_optimization_full_trajectory(
         perturbed_control_vector, num_joints, control_timesteps
     )
 
-    reset_simulator(simulator)
+    reset_systems(simulator)
     perturbed_reward = run_full_trajectory(
         None,
         simulator,

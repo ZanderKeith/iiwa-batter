@@ -190,7 +190,7 @@ class TorqueTrajectorySystem(LeafSystem):
         #     output.SetFromVector(np.array([0] * NUM_JOINTS))
         # else:
         output.SetFromVector(self.torque_trajectory[timestep])
-        print(f"Time: {time}\nTorque: {self.torque_trajectory[timestep][0]}")
+        #print(f"Time: {time}\nTorque: {self.torque_trajectory[timestep][0]}")
 
         # This is a hack to make the contact simulation run every timestep, since I want to
         # stop the expensive hydroelastic contact ASAP if possible
@@ -412,10 +412,7 @@ def setup_simulator(torque_trajectory, dt=CONTACT_DT, meshcat=None, plot_diagram
     return simulator, diagram
 
 
-def reset_simulator(simulator: Simulator, diagram: Diagram, new_torque_trajectory=None):
-    simulator_context = simulator.get_mutable_context()
-    simulator_context.SetTime(0)
-
+def reset_systems(diagram: Diagram, new_torque_trajectory=None):
     if new_torque_trajectory is not None:
         torque_trajectory_system = diagram.GetSubsystemByName(
             "torque_trajectory_system"
@@ -430,8 +427,6 @@ def reset_simulator(simulator: Simulator, diagram: Diagram, new_torque_trajector
     except RuntimeError:
         # No joint limits have been set, so system doesn't exist
         pass
-
-    simulator.Initialize()
 
 
 def parse_simulation_state(simulator: Simulator, diagram: Diagram, system_name: str):
@@ -531,11 +526,9 @@ def run_swing_simulation(
     simulator_context = simulator.get_context()
     plant_context = plant.GetMyContextFromRoot(simulator_context)
     collision_check_system_context = collision_check_system.GetMyContextFromRoot(simulator_context)
-    # context.SetTime(start_time) # TODO: Is this needed?
-    # plant_context.SetTime(start_time) # TODO: Is this needed?
-    #simulator.AdvanceTo(start_time)
-    simulator_context.SetTime(start_time)
+
     simulator.get_mutable_context().SetTime(start_time)
+    #simulator_context.SetTime(start_time)
     simulator.Initialize()
 
     # Set the initial states of the iiwa and the ball
@@ -560,7 +553,7 @@ def run_swing_simulation(
 
     # Run the pitch
     timebase = np.arange(start_time, end_time+check_dt, check_dt)
-    timebase[-1] = end_time # Try to avoid floating point hoo-hah
+    timebase[-1] = end_time # This forces the last timestep to be the end time
 
     if meshcat is not None:
         meshcat.StartRecording()
