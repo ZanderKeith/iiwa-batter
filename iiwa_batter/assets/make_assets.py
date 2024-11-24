@@ -196,6 +196,14 @@ def sweet_spot():
       <model name="sweet_spot">
         <pose>0 0 0 0 0 0</pose>
         <link name="base">
+          <inertial>
+            <mass>0.0</mass>
+              <inertia>
+                  <ixx>0.0</ixx> <ixy>0.0</ixy> <ixz>0.0</ixz>
+                  <iyy>0.0</iyy> <iyz>0.0</iyz>
+                  <izz>0.0</izz>
+              </inertia>
+            </inertial>
           <visual name="visual">
             <geometry>
               <sphere>

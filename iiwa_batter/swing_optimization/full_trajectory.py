@@ -32,24 +32,6 @@ from iiwa_batter.swing_optimization.stochastic_gradient_descent import make_torq
 # This actually works somewhat well... I'm surprised it isn't unbearably slow
 # This shall be the backup plan in case the more 'intelligently designed' optimization doesn't work
 
-def initialize_control_vector(robot_constraints, num_timesteps):
-    # First index is the initial position
-    # All the next ones are the control torques
-    num_joints = len(robot_constraints["torque"])
-    control_vector = np.zeros(num_joints + num_timesteps * num_joints)
-
-    # Set the initial position
-    for i, joint in enumerate(robot_constraints["joint_range"].values()):
-        control_vector[i] = np.random.uniform(joint[0], joint[1])
-
-    for t in range(num_timesteps):
-        for i, torque in enumerate(robot_constraints["torque"].values()):
-            control_vector[num_joints + t * num_joints + i] = np.random.uniform(
-                -torque, torque
-            )
-
-    return control_vector
-
 def full_trajectory_reward(
     simulator: Simulator,
     diagram: Diagram,
