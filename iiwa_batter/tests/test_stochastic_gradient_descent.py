@@ -77,4 +77,3 @@ def test_descent_step_bounds():
     for i in range(NUM_JOINTS):
         assert np.all(clipped_vector[:, i] <= upper_limits[i])
         assert np.all(clipped_vector[:, i] >= lower_limits[i])
-    

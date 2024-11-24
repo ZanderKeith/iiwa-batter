@@ -22,10 +22,8 @@ from iiwa_batter.swing_optimization.full_trajectory import (
 
 def test_run_single_full_trajectory_torque_only():
     # Try running the trajectory optimization with only the torque values being updated and ensure nothing breaks
-
     np.random.seed(0)
-    robot = "iiwa14"
-    robot_constraints = JOINT_CONSTRAINTS[robot]
+    robot_constraints = JOINT_CONSTRAINTS["iiwa14"]
     torque_constraints = np.array([int(torque) for torque in robot_constraints["torque"].values()])
 
     ball_initial_velocity, ball_time_of_flight = find_ball_initial_velocity(90, [0, 0, 0.6])
@@ -33,7 +31,7 @@ def test_run_single_full_trajectory_torque_only():
     initial_control_vector = initialize_control_vector(robot_constraints, len(trajectory_timesteps))
 
     simulator, diagram = setup_simulator(torque_trajectory={}, dt=PITCH_DT, robot_constraints=robot_constraints)
-    single_full_trajectory_torque_only(
+    best_control_vector, best_reward = single_full_trajectory_torque_only(
         simulator=simulator,
         diagram=diagram,
         initial_joint_positions=np.array([0]*NUM_JOINTS),
@@ -42,6 +40,14 @@ def test_run_single_full_trajectory_torque_only():
         ball_time_of_flight=ball_time_of_flight,
         torque_constraints=torque_constraints,
     )
+
+    for i in range(NUM_JOINTS):
+        assert np.all(best_control_vector[:, i] <= torque_constraints[i])
+        assert np.all(best_control_vector[:, i] >= -torque_constraints[i])
+
+
+def test_run_single_full_trajectory_torque_and_position():
+    pass
 
 # def test_run_multi_full_trajectory():
 #     # Try running the full trajectory optimization
