@@ -168,7 +168,7 @@ def multi_full_trajectory(
     # Initialize the simulator and diagram
     # Keeping these separate for each trajectory, can't re-make them over and over or it causes memory issues
     target_details = {}
-    for i, target in targets:
+    for i, target in enumerate(targets):
 
         # Determine how many timesteps are needed for the control vector
 
