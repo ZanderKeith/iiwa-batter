@@ -13,9 +13,6 @@ from iiwa_batter.physics import (
     STRIKE_ZONE_Z,
 )
 
-FLIGHT_TIME_MULTIPLE = (
-    1.04  # Extra time to allow the ball to pass through the strike zone
-)
 
 
 def make_model_directive(dt=PITCH_DT, model_urdf="iiwa14_limitless"):

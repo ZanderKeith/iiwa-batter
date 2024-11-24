@@ -15,7 +15,10 @@ from iiwa_batter import (
 
 from iiwa_batter.physics import (
     PITCH_START_POSITION,
+    FLIGHT_TIME_MULTIPLE,
     find_ball_initial_velocity,
+    ball_flight_path,
+    ball_distance_multiplier,
 )
 from iiwa_batter.robot_constraints.get_joint_constraints import JOINT_CONSTRAINTS
 from iiwa_batter.swing_simulator import (
@@ -24,6 +27,7 @@ from iiwa_batter.swing_simulator import (
     run_swing_simulation,
     setup_simulator,
 )
+from iiwa_batter.swing_optimization.trajectory_helpers import make_torque_trajectory
 
 # This actually works somewhat well... I'm surprised it isn't unbearably slow
 # This shall be the backup plan in case the more 'intelligently designed' optimization doesn't work
@@ -45,6 +49,42 @@ def initialize_control_vector(robot_constraints, num_timesteps):
             )
 
     return control_vector
+
+def full_trajectory_reward(
+    simulator: Simulator,
+    diagram: Diagram,
+    initial_joint_positions,
+    control_vector,
+    ball_initial_velocity,
+    ball_time_of_flight,
+):
+
+    trajectory_timesteps = np.arange(0, ball_time_of_flight+CONTROL_DT, CONTROL_DT)
+    torque_trajectory = make_torque_trajectory(control_vector, NUM_JOINTS, trajectory_timesteps)
+    reset_systems(diagram, torque_trajectory)
+
+    status_dict = run_swing_simulation(
+        simulator,
+        diagram,
+        start_time=0,
+        end_time=ball_time_of_flight*FLIGHT_TIME_MULTIPLE,
+        initial_joint_positions=initial_joint_positions,
+        initial_joint_velocities=np.zeros(NUM_JOINTS),
+        initial_ball_velocity=ball_initial_velocity,
+    )
+
+    result = status_dict["result"]
+    if result == "contact":
+        return -10 * status_dict["contact_severity"]
+    elif result == "miss":
+        return -10 * status_dict["closest_approach"]
+    elif result == "hit":
+        ball_position, ball_velocity = parse_simulation_state(simulator, diagram, "ball")
+        path = ball_flight_path(ball_position, ball_velocity)
+        land_location = path[-1, :2]
+        distance = np.linalg.norm(land_location)
+        multiplier = ball_distance_multiplier(land_location)
+        return distance * multiplier
 
 def single_full_trajectory(
     simulator: Simulator,
@@ -169,10 +209,7 @@ def multi_full_trajectory(
     # Keeping these separate for each trajectory, can't re-make them over and over or it causes memory issues
     target_details = {}
     for i, target in enumerate(targets):
-
         # Determine how many timesteps are needed for the control vector
-
-
         simulator, diagram = setup_simulator(
             torque_trajectory={},
             dt = simulation_dt,
@@ -188,5 +225,12 @@ def multi_full_trajectory(
         }
         target_details[i] = target_dict
 
-    
+    best_reward = -np.inf
+    best_initial_position = original_initial_position
+    for i in range(top_level_iterations):
 
+        # Determine the loss using the current initial position
+
+        # Determine the loss after after perturbing the initial position
+
+        # Update the initial position based on the gradient

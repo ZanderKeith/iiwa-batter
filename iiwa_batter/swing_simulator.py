@@ -480,7 +480,7 @@ def run_swing_simulation(
     initial_ball_position,
     initial_ball_velocity,
     meshcat=None,
-    check_dt=PITCH_DT * 100,
+    check_dt=PITCH_DT * 10,
     record_state=False,
 ) -> dict:
     """Run a swing simulation from start_time to end_time with the given initial conditions.
@@ -546,6 +546,10 @@ def run_swing_simulation(
     plant.SetPositions(plant_context, iiwa, initial_joint_positions)
     plant.SetVelocities(plant_context, iiwa, [0] * NUM_JOINTS)
 
+    # Set up here so we don't need to re-evaluate every time
+    sweet_spot = plant.GetModelInstanceByName("sweet_spot")
+    sweet_spot_body = plant.GetRigidBodyByName("base", sweet_spot)
+
     # Run the pitch
     timebase = np.arange(start_time, end_time+check_dt, check_dt)
     timebase[-1] = end_time # This forces the last timestep to be the end time
@@ -553,19 +557,26 @@ def run_swing_simulation(
     if meshcat is not None:
         meshcat.StartRecording()
 
+    result = None
+    contact_severity = np.zeros(1)
     state_dict = {}
+    closest_approach = np.inf
     for t in timebase:
         try:
             simulator.AdvanceTo(t)
         except EOFError:
             # Read the collision severity port and stop here
             contact_severity = collision_check_system.GetOutputPort("collision_severity").Eval(collision_check_system_context)
-            status_dict = {
-                "result": "collision",
-                "severity": contact_severity[0],
-                "state": state_dict,
-            }
-            return status_dict
+            result = "collision"
+            break
+        
+        # Determine the present position of the ball and sweet spot
+        ball_position = plant.GetPositions(plant_context, ball)[4:]
+        sweet_spot_pose = plant.EvalBodyPoseInWorld(plant_context, sweet_spot_body)
+        sweet_spot_position = sweet_spot_pose.translation()
+        distance = np.linalg.norm(ball_position - sweet_spot_position)
+        if distance < closest_approach:
+            closest_approach = distance
         
         if record_state:
             state_dict[t] = {
@@ -576,12 +587,20 @@ def run_swing_simulation(
     if meshcat is not None:
         meshcat.PublishRecording()
 
-    # Get final position of the ball
-    ball_position = plant.GetPositions(plant_context, ball)[4:]
-    if ball_position[0] > 0:
-        status_dict = {"result": "hit", "state": state_dict}
-    else:
-        status_dict = {"result": "miss", "state": state_dict}
+    if result is None:
+        # Get final position of the ball
+        ball_position = plant.GetPositions(plant_context, ball)[4:]
+        if ball_position[0] > 0:
+            result = "hit"
+        else:
+            result = "miss"
+
+    status_dict = {
+        "result": result,
+        "contact_severity": contact_severity[0],
+        "state": state_dict,
+        "closest_approach": closest_approach,
+    }
 
     return status_dict
 

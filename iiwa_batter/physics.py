@@ -15,6 +15,8 @@ BALL_DRAG_COEFFICIENT = (
     0.3  # https://www1.grc.nasa.gov/beginners-guide-to-aeronautics/drag-on-a-baseball/
 )
 
+# Extra time to allow the ball to pass through the strike zone
+FLIGHT_TIME_MULTIPLE = 1.04
 
 def mph_to_mps(mph):
     return mph * 0.44704
@@ -160,6 +162,18 @@ def parse_ball_state(state):
     velocity = state[10:13]
 
     return position, velocity
+
+
+def ball_distance_multiplier(land_location):
+    """Depending on where the ball lands, multiply its distance by a factor"""
+    if land_location[0] < 0:
+        return -1
+    elif np.abs(np.arctan(land_location[1] / land_location[0])) > np.pi / 4:
+        return 0.5
+    elif np.linalg.norm(land_location) < 100:
+        return 1
+    else:
+        return 1.2 # A little extra encouragement for the long balls
 
 
 if __name__ == "__main__":
