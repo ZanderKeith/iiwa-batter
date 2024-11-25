@@ -26,6 +26,17 @@ from iiwa_batter.swing_optimization.stochastic_gradient_descent import (
     make_torque_trajectory,
 )
 
+NUM_INITIAL_POSITIONS = 8
+MAIN_COARSE_ITERATIONS = 1000
+MAIN_FINE_ITERATIONS = 10
+GROUP_COARSE_ITERATIONS = 200
+GROUP_FINE_ITERATIONS = 10
+
+LIBRARY_SPEEDS_MPH = [70, 80, 90]
+LIBRARY_POSITIONS = [
+    [0, 0, 0.6],
+]
+
 class Trajectory:
     def __init__(self, robot, target_speed_mph, target_position, type):
         self.robot = robot

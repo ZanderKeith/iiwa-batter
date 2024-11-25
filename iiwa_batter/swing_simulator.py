@@ -317,7 +317,7 @@ class CollisionCheckSystem(LeafSystem):
                 contact_location = contact_info.contact_surface().centroid()
                 ball_location = self._ball_port.Eval(context)[4:7]
                 distance = np.linalg.norm(contact_location - ball_location)
-                if distance < 0.1:
+                if distance < 0.3:
                     continue
                 else:
                     collision_force = contact_results.hydroelastic_contact_info(i).F_Ac_W()
