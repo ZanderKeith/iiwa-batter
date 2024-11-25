@@ -148,6 +148,7 @@ def single_full_trajectory_torque_and_position(
     position_constraints_upper,
     position_constraints_lower,
     torque_constraints,
+    best_reward=-np.inf,
     learning_rate=1,
     iterations=10,
     return_best=True,
@@ -157,9 +158,6 @@ def single_full_trajectory_torque_and_position(
     present_initial_position = original_initial_joint_positions
     present_control_vector = original_control_vector
 
-    best_reward = -np.inf
-    best_initial_position = present_initial_position
-    best_control_vector = present_control_vector
     for i in range(iterations):
         present_reward = full_trajectory_reward(
             simulator,
@@ -210,16 +208,15 @@ def single_full_trajectory_torque_and_position(
             -torque_constraints,
         )
 
-        present_control_vector = updated_control_vector
-        present_initial_position = updated_initial_position
-
+        # Only update the present values if we are not on the last iteration
+        if i < iterations - 1:
+            present_initial_position = updated_initial_position
+            present_control_vector = updated_control_vector
+        
     if return_best:
         return best_initial_position, best_control_vector, best_reward
-    else: 
-        previous_reward = present_reward
-        next_initial_position = updated_initial_position
-        next_control_vector = updated_control_vector
-        return present_initial_position, present_control_vector, present_reward, next_initial_position, next_control_vector
+    else:
+        return present_initial_position, present_control_vector, present_reward, updated_initial_position, updated_control_vector
 
 
 def multi_full_trajectory(

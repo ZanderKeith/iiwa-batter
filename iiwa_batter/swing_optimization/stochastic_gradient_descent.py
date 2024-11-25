@@ -76,4 +76,3 @@ def descent_step(original_vector, perturbed_vector, original_reward, perturbed_r
     desired_vector = original_vector + learning_rate * (perturbed_reward - original_reward) * (perturbed_vector - original_vector)
     clipped_vector = np.clip(desired_vector, lower_limits, upper_limits)
     return clipped_vector
-    

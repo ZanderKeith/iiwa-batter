@@ -30,7 +30,7 @@ def test_save_load_consistency():
     target_position = [0, 0, 0.6]
     optimization_name = "test_save_load_consistency"
     save_directory = f"{PACKAGE_ROOT}/tests/trajectories"
-    test_dt = PITCH_DT*10
+    test_dt = PITCH_DT
 
     run_naive_full_trajectory_optimization(
         robot=robot,
@@ -49,26 +49,11 @@ def test_save_load_consistency():
 
     initial_joint_positions = results_dict["best_initial_position"]
     control_vector = results_dict["best_control_vector"]
-    robot_constraints = JOINT_CONSTRAINTS[robot]
-    torque_constraints = np.array([int(torque) for torque in robot_constraints["torque"].values()])
-    position_constraints_upper = np.array([joint[1] for joint in robot_constraints["joint_range"].values()])
-    position_constraints_lower = np.array([joint[0] for joint in robot_constraints["joint_range"].values()])
 
     ball_initial_velocity, ball_time_of_flight = find_ball_initial_velocity(target_velocity_mph, target_position)
     trajectory_timesteps = np.arange(0, ball_time_of_flight+CONTROL_DT, CONTROL_DT)
     torque_trajectory = make_torque_trajectory(control_vector, trajectory_timesteps)
     simulator, diagram = setup_simulator(torque_trajectory, dt=test_dt)
-
-    # status_dict = run_swing_simulation(
-    #     simulator=simulator,
-    #     diagram=diagram,
-    #     start_time=0,
-    #     end_time=ball_time_of_flight*FLIGHT_TIME_MULTIPLE,
-    #     initial_joint_positions=initial_joint_positions,
-    #     initial_joint_velocities=np.zeros(NUM_JOINTS),
-    #     initial_ball_position=PITCH_START_POSITION,
-    #     initial_ball_velocity=ball_initial_velocity,
-    # )
 
     reward = full_trajectory_reward(
         simulator=simulator,

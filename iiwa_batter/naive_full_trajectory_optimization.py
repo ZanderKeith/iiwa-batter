@@ -49,8 +49,6 @@ def run_naive_full_trajectory_optimization(
 
     training_results = {}
     best_reward = -np.inf
-    best_initial_position = present_initial_position.copy()
-    best_control_vector = present_control_vector.copy()
     for i in range(outer_iterations):
         present_initial_position, present_control_vector, present_reward, next_initial_position, next_control_vector = single_full_trajectory_torque_and_position(
             simulator=simulator,
@@ -69,20 +67,22 @@ def run_naive_full_trajectory_optimization(
 
         if present_reward > best_reward:
             best_reward = present_reward
-            best_initial_position = present_initial_position.copy()
-            best_control_vector = present_control_vector.copy()
+            best_initial_position = present_initial_position
+            best_control_vector = present_control_vector
 
         training_results[i] = {
             "present_reward": present_reward,
-            "present_initial_position": present_initial_position.copy(),
-            "present_control_vector": present_control_vector.copy(),
-            "best_reward": best_reward,
+            "present_initial_position": present_initial_position,
+            "present_control_vector": present_control_vector,
+            "best_reward_so_far": best_reward,
         }
+
+        if i < outer_iterations - 1:
+            present_initial_position = next_initial_position
+            present_control_vector = next_control_vector
+
         if debug_prints:
             print(f"Top-Level Iteration {i}: present reward: {present_reward:.3f}, best reward: {best_reward:.3f}")
-
-        present_initial_position = next_initial_position
-        present_control_vector = next_control_vector
 
     training_results["total_time"] = time.time() - start_time
     training_results["best_initial_position"] = best_initial_position

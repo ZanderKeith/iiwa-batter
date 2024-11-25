@@ -44,11 +44,6 @@ def test_setup_simulator():
     assert torque_trajectory_system is not None
 
 
-def test_rectilinear_torque_trajectory():
-    # Ensure the torque trajectory correctly follows rectilinear interpolation
-    pass
-
-
 def test_torque_trajectory_change_on_reset():
     # Ensure the torque trajectory can be changed on reset, and that the new trajectory is used
     torque_trajectory_1 = {0: np.array([0] * NUM_JOINTS), 1: np.array([1] * NUM_JOINTS)}
@@ -195,13 +190,13 @@ def test_compare_simulation_dt_final_state():
 def test_self_collision_check():
     # Ensure the collision check system works for self-collisions
 
-    simulator_contact_dt, diagram_contact_dt = setup_simulator(
+    simulator, diagram = setup_simulator(
         torque_trajectory={}, dt=PITCH_DT
     )
 
     status_dict = run_swing_simulation(
-        simulator=simulator_contact_dt,
-        diagram=diagram_contact_dt,
+        simulator=simulator,
+        diagram=diagram,
         start_time=0,
         end_time=1.3,
         initial_joint_positions=np.array([0] * NUM_JOINTS),
@@ -450,7 +445,6 @@ def test_simulation_state_preservation_no_trajectory():
     ball_position_b, ball_velocity_b = parse_simulation_state(simulator, diagram, "ball")
     end_time_b = parse_simulation_state(simulator, diagram, "time")
 
-    # The final time and the ball positions are the same
     assert end_time_a == end_time_b
     assert np.allclose(ball_position_a, ball_position_b)
     assert np.allclose(ball_velocity_a, ball_velocity_b)
@@ -460,83 +454,6 @@ def test_simulation_state_preservation_no_trajectory():
     joint_velocities_deg_a = np.rad2deg(joint_velocities_a)
     joint_velocities_deg_b = np.rad2deg(joint_velocities_b)
 
-    # But there is significant difference in the joint positions and velocities
-    assert np.allclose(joint_positions_deg_a, joint_positions_deg_b, atol=1e-1)
-    assert np.allclose(joint_velocities_deg_a, joint_velocities_deg_b, atol=1)
-
-
-def test_simulation_state_preservation_no_trajectory_alt():
-    # Without a torque trajectory, run two sets of simulations (iiwa should just be falling under gravity)
-    # The first one goes all the way through
-    # The second one resets but loads the state where it left off
-    # Ensure the final states are the same
-
-    torque_trajectory = {
-        0: np.zeros(NUM_JOINTS),
-    }
-
-    simulator, diagram = setup_simulator(torque_trajectory=torque_trajectory, dt=PITCH_DT, add_contact=False, plot_diagram=True)
-    run_swing_simulation(
-        simulator=simulator,
-        diagram=diagram,
-        start_time=0,
-        end_time=CONTROL_DT*4,
-        initial_joint_positions=np.array([0] * NUM_JOINTS),
-        initial_joint_velocities=np.array([0] * NUM_JOINTS),
-        initial_ball_position=PITCH_START_POSITION,
-        initial_ball_velocity=np.zeros(3),
-        record_state=True,
-    )
-
-    joint_positions_a, joint_velocities_a = parse_simulation_state(simulator, diagram, "iiwa")
-    ball_position_a, ball_velocity_a = parse_simulation_state(simulator, diagram, "ball")
-    end_time_a = parse_simulation_state(simulator, diagram, "time")
-
-    reset_systems(diagram)
-
-    run_swing_simulation(
-        simulator=simulator,
-        diagram=diagram,
-        start_time=0,
-        end_time=CONTROL_DT*2,
-        initial_joint_positions=np.array([0] * NUM_JOINTS),
-        initial_joint_velocities=np.array([0] * NUM_JOINTS),
-        initial_ball_position=PITCH_START_POSITION,
-        initial_ball_velocity=np.zeros(3),
-    )
-
-    # I would also be happy if this worked, but it throws an error
-    # simulator_context = simulator.get_mutable_context()
-
-    # Doing it like this also doesn't work because it resets the time back to 0
-    context = diagram.CreateDefaultContext()
-    # Do I need to fill in the context with the state everything was just in?
-    simulator = Simulator(diagram, context)
-    start_time = parse_simulation_state(simulator, diagram, "time")
-    assert start_time != 0
-
-
-    simulator.AdvanceTo(CONTROL_DT*4)
-
-    joint_positions_b, joint_velocities_b = parse_simulation_state(simulator, diagram, "iiwa")
-    ball_position_b, ball_velocity_b = parse_simulation_state(simulator, diagram, "ball")
-    end_time_b = parse_simulation_state(simulator, diagram, "time")
-
-    joint_positions_b, joint_velocities_b = parse_simulation_state(simulator, diagram, "iiwa")
-    ball_position_b, ball_velocity_b = parse_simulation_state(simulator, diagram, "ball")
-    end_time_b = parse_simulation_state(simulator, diagram, "time")
-
-    # The final time and the ball positions are the same
-    assert end_time_a == end_time_b
-    assert np.allclose(ball_position_a, ball_position_b)
-    assert np.allclose(ball_velocity_a, ball_velocity_b)
-
-    joint_positions_deg_a = np.rad2deg(joint_positions_a)
-    joint_positions_deg_b = np.rad2deg(joint_positions_b)
-    joint_velocities_deg_a = np.rad2deg(joint_velocities_a)
-    joint_velocities_deg_b = np.rad2deg(joint_velocities_b)
-
-    # But there is significant difference in the joint positions and velocities
     assert np.allclose(joint_positions_deg_a, joint_positions_deg_b, atol=1e-1)
     assert np.allclose(joint_velocities_deg_a, joint_velocities_deg_b, atol=1)
 
@@ -565,6 +482,106 @@ def test_nonzero_start_time():
 
     assert np.all(joint_positions > 0)
     assert np.all(joint_velocities > 0)
+
+
+def test_collision_severity_reset():
+    # Ensure the collision severity is properly reset when the system is reset
+    simulator, diagram = setup_simulator(
+        torque_trajectory={}, dt=PITCH_DT
+    )
+
+    status_dict = run_swing_simulation(
+        simulator=simulator,
+        diagram=diagram,
+        start_time=0,
+        end_time=1.3,
+        initial_joint_positions=np.zeros(NUM_JOINTS),
+        initial_joint_velocities=np.zeros(NUM_JOINTS),
+        initial_ball_position=PITCH_START_POSITION,
+        initial_ball_velocity=np.zeros(3),
+        record_state=True,
+    )
+
+    state_1 = status_dict["state"]
+    end_time_1 = parse_simulation_state(simulator, diagram, "time")
+    ball_position_1, ball_velocity_1 = parse_simulation_state(simulator, diagram, "ball")
+    contact_severity_1 = status_dict["contact_severity"]
+
+    reset_systems(diagram)
+
+    status_dict = run_swing_simulation(
+        simulator=simulator,
+        diagram=diagram,
+        start_time=0,
+        end_time=1.3,
+        initial_joint_positions=np.zeros(NUM_JOINTS),
+        initial_joint_velocities=np.zeros(NUM_JOINTS),
+        initial_ball_position=PITCH_START_POSITION,
+        initial_ball_velocity=np.zeros(3),
+        record_state=True,
+    )
+
+    state_2 = status_dict["state"]
+    end_time_2 = parse_simulation_state(simulator, diagram, "time")
+    ball_position_2, ball_velocity_2 = parse_simulation_state(simulator, diagram, "ball")
+    contact_severity_2 = status_dict["contact_severity"]
+
+    # It's lining up perfectly, until suddenly there's a hydroelastic collision that ends it.
+    for time, state in state_2.items():
+        assert np.allclose(state["iiwa"][0], state_1[time]["iiwa"][0])
+        assert np.allclose(state["iiwa"][1], state_1[time]["iiwa"][1])
+        assert np.allclose(state["ball"][0], state_1[time]["ball"][0])
+        assert np.allclose(state["ball"][1], state_1[time]["ball"][1])
+
+    assert np.isclose(end_time_1, end_time_2)
+
+    assert np.allclose(ball_position_1, ball_position_2)
+    assert np.allclose(ball_velocity_1, ball_velocity_2)
+
+    assert contact_severity_1 == contact_severity_2
+
+
+def test_reset_clears_hydroelastic_contact():
+    simulator, diagram = setup_simulator(
+        torque_trajectory={}, dt=PITCH_DT
+    )
+
+    status_dict = run_swing_simulation(
+        simulator=simulator,
+        diagram=diagram,
+        start_time=0,
+        end_time=1.3,
+        initial_joint_positions=np.zeros(NUM_JOINTS),
+        initial_joint_velocities=np.zeros(NUM_JOINTS),
+        initial_ball_position=PITCH_START_POSITION,
+        initial_ball_velocity=np.zeros(3),
+        record_state=True,
+    )
+
+    reset_systems(diagram)
+
+    station: Diagram = diagram.GetSubsystemByName("station")
+    plant: Diagram = station.GetSubsystemByName("plant")
+    simulator_context = simulator.get_context()
+
+    simulator.get_mutable_context().SetTime(0)
+    simulator.Initialize()
+    
+    plant_context = plant.GetMyContextFromRoot(simulator_context)
+    iiwa = plant.GetModelInstanceByName("iiwa")
+    plant.SetPositions(plant_context, iiwa, np.zeros(NUM_JOINTS))
+    plant.SetVelocities(plant_context, iiwa, np.zeros(NUM_JOINTS))
+    
+
+    simulator.AdvanceTo(0)
+
+    # Read the hydroelastic contact
+    station = diagram.GetSubsystemByName("station")
+    simulator_context = simulator.get_context()
+    station_context = station.GetMyContextFromRoot(simulator_context)
+    contact_results = station.GetOutputPort("contact_results").Eval(station_context)
+    num_hydroelastic_contacts = contact_results.num_hydroelastic_contacts()
+    assert num_hydroelastic_contacts == 0
 
 
 def test_benchmark_simulation_handoff():

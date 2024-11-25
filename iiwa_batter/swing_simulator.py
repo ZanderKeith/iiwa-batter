@@ -468,7 +468,6 @@ def parse_simulation_state(simulator: Simulator, diagram: Diagram, system_name: 
     elif system_name == "time":
         return simulator_context.get_time()
     elif system_name == "iiwa_actuation":
-        plant_context = plant.GetMyContextFromRoot(simulator_context)
         iiwa = plant.GetModelInstanceByName("iiwa")
         return plant.GetInputPort("iiwa_actuation").Eval(plant_context)
 
@@ -530,7 +529,6 @@ def run_swing_simulation(
     collision_check_system_context = collision_check_system.GetMyContextFromRoot(simulator_context)
 
     simulator.get_mutable_context().SetTime(start_time)
-    #simulator_context.SetTime(start_time)
     simulator.Initialize()
 
     # Set the initial states of the iiwa and the ball
@@ -559,15 +557,13 @@ def run_swing_simulation(
         meshcat.StartRecording()
 
     result = None
-    contact_severity = np.zeros(1)
     state_dict = {}
     closest_approach = np.inf
     for t in timebase:
         try:
             simulator.AdvanceTo(t)
         except EOFError:
-            # Read the collision severity port and stop here
-            contact_severity = collision_check_system.GetOutputPort("collision_severity").Eval(collision_check_system_context)
+            # Collision detected, stop the simulation
             result = "collision"
             break
         
@@ -598,7 +594,7 @@ def run_swing_simulation(
 
     status_dict = {
         "result": result,
-        "contact_severity": contact_severity[0],
+        "contact_severity": collision_check_system.GetOutputPort("collision_severity").Eval(collision_check_system_context)[0],
         "state": state_dict,
         "closest_approach": closest_approach,
     }
