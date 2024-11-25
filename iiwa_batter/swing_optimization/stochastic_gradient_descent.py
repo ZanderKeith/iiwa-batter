@@ -26,7 +26,7 @@ def find_initial_positions(simulator, diagram, robot_constraints, num_positions)
             0,
             CONTROL_DT, # Giving it a full control timestep on its own
             candidate_position,
-            np.array([0]*NUM_JOINTS),
+            np.zeros(NUM_JOINTS),
             PITCH_START_POSITION,
             np.zeros(3),
         )
@@ -43,6 +43,7 @@ def find_initial_positions(simulator, diagram, robot_constraints, num_positions)
 
         initial_positions.append(candidate_position)
 
+    reset_systems(diagram)
     return initial_positions
 
 

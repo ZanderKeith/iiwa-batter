@@ -546,8 +546,6 @@ def run_swing_simulation(
     plant.SetVelocities(
         plant_context, ball, np.concatenate([np.zeros(3), initial_ball_velocity])
     )
-    plant.SetPositions(plant_context, iiwa, initial_joint_positions)
-    plant.SetVelocities(plant_context, iiwa, [0] * NUM_JOINTS)
 
     # Set up here so we don't need to re-evaluate every time
     sweet_spot = plant.GetModelInstanceByName("sweet_spot")
