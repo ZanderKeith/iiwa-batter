@@ -26,6 +26,7 @@ from iiwa_batter.swing_simulator import (
 from iiwa_batter.robot_constraints.get_joint_constraints import JOINT_CONSTRAINTS
 from iiwa_batter.swing_optimization.stochastic_gradient_descent import (
     make_torque_trajectory,
+    expand_control_vector,
 )
 from iiwa_batter.naive_full_trajectory_optimization import (
     run_naive_full_trajectory_optimization,
@@ -176,6 +177,12 @@ def make_trajectory_library(robot):
 
             # There's a little dosido here where the slower balls need a longer trajectory
             # In this case, we expand the control vector to start with zeros, since the robot can afford to wait to initiate the swing
+            _, ball_time_of_flight = find_ball_initial_velocity(target_speed_mph, target_position)
+            trajectory_timesteps = np.arange(0, ball_time_of_flight+CONTROL_DT, CONTROL_DT)
+            if trajectory_timesteps.size > best_control_vector.shape[0]:
+                initial_control_vector = expand_control_vector(best_control_vector, len(trajectory_timesteps))
+            else:
+                initial_control_vector = best_control_vector
 
             run_naive_full_trajectory_optimization_hot_start_torque_only(
                 robot=robot,
@@ -184,7 +191,7 @@ def make_trajectory_library(robot):
                 optimization_name="group_coarse",
                 save_directory=save_directory,
                 initial_joint_positions=best_initial_position,
-                present_control_vector=best_control_vector,
+                present_control_vector=initial_control_vector,
                 simulation_dt=PITCH_DT,
                 iterations=GROUP_COARSE_ITERATIONS,
             )

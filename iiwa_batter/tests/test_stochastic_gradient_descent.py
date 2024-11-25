@@ -8,6 +8,7 @@ from iiwa_batter import (
 from iiwa_batter.robot_constraints.get_joint_constraints import JOINT_CONSTRAINTS
 from iiwa_batter.swing_optimization.stochastic_gradient_descent import (
     initialize_control_vector,
+    expand_control_vector,
     make_torque_trajectory,
     descent_step,
     perturb_vector,
@@ -27,6 +28,18 @@ def test_initialize_control_vector():
         assert np.all(control_vector[:, i] <= robot_constraints["torque"][str(i+1)])
         assert np.all(control_vector[:, i] >= -robot_constraints["torque"][str(i+1)])
 
+def test_expand_control_vector():
+    original_control_vector = np.ones((4, NUM_JOINTS))
+    new_num_timesteps = 8
+
+    expanded_control_vector = expand_control_vector(original_control_vector, new_num_timesteps)
+
+    assert expanded_control_vector.shape == (new_num_timesteps, NUM_JOINTS)
+
+    for i in range(new_num_timesteps-original_control_vector.shape[0]):
+        assert np.all(expanded_control_vector[i] == np.zeros(NUM_JOINTS))
+    for i in range(new_num_timesteps-original_control_vector.shape[0], new_num_timesteps):
+        assert np.all(expanded_control_vector[i] == np.ones(NUM_JOINTS))
 
 def test_make_torque_trajectory():
     # Ensure that the torque trajectory is made correclty

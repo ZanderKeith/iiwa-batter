@@ -7,18 +7,6 @@ from iiwa_batter import (
     PITCH_DT,
     CONTROL_DT,
 )
-from iiwa_batter.physics import (
-    find_ball_initial_velocity,
-    PITCH_START_POSITION,
-    FLIGHT_TIME_MULTIPLE,
-)
-from iiwa_batter.swing_simulator import (
-    setup_simulator,
-    run_swing_simulation,
-)
-from iiwa_batter.robot_constraints.get_joint_constraints import JOINT_CONSTRAINTS
-from iiwa_batter.swing_optimization.full_trajectory import full_trajectory_reward
-from iiwa_batter.swing_optimization.stochastic_gradient_descent import make_torque_trajectory
 
 from iiwa_batter.naive_full_trajectory_optimization import run_naive_full_trajectory_optimization
 

@@ -55,6 +55,14 @@ def initialize_control_vector(robot_constraints, num_timesteps):
 
     return control_vector
 
+def expand_control_vector(original_control_vector, new_num_timesteps):
+    """Add zeros to the beginning of the control vector to make it longer if necessary."""
+
+    original_length = len(original_control_vector)
+    zero_fill = np.zeros((new_num_timesteps-original_length, NUM_JOINTS))
+    expanded_control_vector = np.concatenate((zero_fill, original_control_vector), axis=0)
+
+    return expanded_control_vector
 
 def make_torque_trajectory(control_vector, trajectory_timesteps):
     """Make a torque trajectory from a control vector."""
