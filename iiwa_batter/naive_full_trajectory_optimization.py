@@ -72,12 +72,15 @@ def run_naive_full_trajectory_optimization(
             best_initial_position = present_initial_position
             best_control_vector = present_control_vector
 
-        training_results[i] = {
-            "present_reward": present_reward,
-            "present_initial_position": present_initial_position,
-            "present_control_vector": present_control_vector,
-            "best_reward_so_far": best_reward,
-        }
+        if i % 1000 == 0:
+            training_results[i] = {
+                "present_reward": present_reward,
+                "present_initial_position": present_initial_position,
+                "present_control_vector": present_control_vector,
+                "best_reward_so_far": best_reward,
+            }
+            with open(f"{save_directory}/{optimization_name}.dill", "wb") as f:
+                dill.dump(training_results, f)
 
         if i < outer_iterations - 1:
             present_initial_position = next_initial_position
