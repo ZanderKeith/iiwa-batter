@@ -31,6 +31,7 @@ def run_naive_full_trajectory_optimization(
     inner_iterations=10,
     outer_iterations=10,
     debug_prints=False,
+    save_interval=10,
 ):
 
     start_time = time.time()
@@ -72,13 +73,13 @@ def run_naive_full_trajectory_optimization(
             best_initial_position = present_initial_position
             best_control_vector = present_control_vector
 
-        if i % 1000 == 0:
+        if i % save_interval == 0:
             training_results[i] = {
                 "present_reward": present_reward,
-                "present_initial_position": present_initial_position,
-                "present_control_vector": present_control_vector,
                 "best_reward_so_far": best_reward,
             }
+            training_results["best_initial_position"] = best_initial_position
+            training_results["best_control_vector"] = best_control_vector
             with open(f"{save_directory}/{optimization_name}.dill", "wb") as f:
                 dill.dump(training_results, f)
 
