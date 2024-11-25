@@ -44,10 +44,10 @@ def run_naive_full_trajectory_optimization(
     simulator, diagram = setup_simulator(torque_trajectory={}, dt=simulation_dt, robot_constraints=robot_constraints)
     ball_initial_velocity, ball_time_of_flight = find_ball_initial_velocity(target_velocity_mph, target_position)
     trajectory_timesteps = np.arange(0, ball_time_of_flight+CONTROL_DT, CONTROL_DT)
-    #present_initial_position = find_initial_positions(simulator, diagram, robot_constraints, 1)[0]
-    #present_control_vector = initialize_control_vector(robot_constraints, len(trajectory_timesteps))
-    present_initial_position = np.ones(7)
-    present_control_vector = np.ones((len(trajectory_timesteps), 7))
+    present_initial_position = find_initial_positions(simulator, diagram, robot_constraints, 1)[0]
+    present_control_vector = initialize_control_vector(robot_constraints, len(trajectory_timesteps))
+    #present_initial_position = np.ones(7)
+    #present_control_vector = np.ones((len(trajectory_timesteps), 7))
 
     training_results = {}
     best_reward = -np.inf
@@ -90,6 +90,7 @@ def run_naive_full_trajectory_optimization(
     training_results["best_initial_position"] = best_initial_position
     training_results["best_control_vector"] = best_control_vector
     training_results["final_best_reward"] = best_reward
+    training_results["optimized_dt"] = simulation_dt
     if debug_prints:
         print(f"Total time: {training_results['total_time']:.1f} seconds")
 

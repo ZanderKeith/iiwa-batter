@@ -151,7 +151,7 @@ def single_full_trajectory_torque_and_position(
     best_reward=-np.inf,
     learning_rate=1,
     iterations=10,
-    return_best=True,
+    return_best=False,
 ):
     """Run stochastic optimization on the control vector for a single full trajectory, only updating the torque values"""
 
