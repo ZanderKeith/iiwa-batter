@@ -78,6 +78,7 @@ def full_trajectory_reward(
     else:
         raise ValueError(f"Unknown result: {result}")
 
+
 def single_full_trajectory_torque_only(
     simulator: Simulator,
     diagram: Diagram,
@@ -87,55 +88,41 @@ def single_full_trajectory_torque_only(
     ball_time_of_flight,
     torque_constraints,
     learning_rate=1,
-    iterations=10,
 ):
     """Run stochastic optimization on the control vector for a single full trajectory, only updating the torque values"""
 
     present_control_vector = original_control_vector
 
-    best_reward = -np.inf
-    best_control_vector = present_control_vector
-    for _ in range(iterations):
-        present_reward = full_trajectory_reward(
-            simulator,
-            diagram,
-            initial_joint_positions,
-            present_control_vector,
-            ball_initial_velocity,
-            ball_time_of_flight,
-        )
+    present_reward = full_trajectory_reward(
+        simulator,
+        diagram,
+        initial_joint_positions,
+        present_control_vector,
+        ball_initial_velocity,
+        ball_time_of_flight,
+    )
 
-        if present_reward > best_reward:
-            best_reward = present_reward
-            best_control_vector = present_control_vector
+    perturbed_control_vector = perturb_vector(present_control_vector, 1, torque_constraints, -torque_constraints)
+    perturbed_reward = full_trajectory_reward(
+        simulator,
+        diagram,
+        initial_joint_positions,
+        perturbed_control_vector,
+        ball_initial_velocity,
+        ball_time_of_flight,
+    )
 
-        perturbed_control_vector = perturb_vector(present_control_vector, 1, torque_constraints, -torque_constraints)
-        perturbed_reward = full_trajectory_reward(
-            simulator,
-            diagram,
-            initial_joint_positions,
-            perturbed_control_vector,
-            ball_initial_velocity,
-            ball_time_of_flight,
-        )
+    updated_control_vector = descent_step(
+        present_control_vector,
+        perturbed_control_vector,
+        present_reward,
+        perturbed_reward,
+        learning_rate,
+        torque_constraints,
+        -torque_constraints,
+    )
 
-        if perturbed_reward > best_reward:
-            best_reward = perturbed_reward
-            best_control_vector = perturbed_control_vector
-
-        updated_control_vector = descent_step(
-            present_control_vector,
-            perturbed_control_vector,
-            present_reward,
-            perturbed_reward,
-            learning_rate,
-            torque_constraints,
-            -torque_constraints,
-        )
-
-        present_control_vector = updated_control_vector
-
-    return best_control_vector, best_reward
+    return updated_control_vector, present_reward
 
 
 def single_full_trajectory_torque_and_position(
@@ -150,7 +137,7 @@ def single_full_trajectory_torque_and_position(
     torque_constraints,
     learning_rate=1,
 ):
-    """Run stochastic optimization on the control vector for a single full trajectory, only updating the torque values"""
+    """Run stochastic optimization on the control vector for a single full trajectory, updating both the torque and position values"""
 
     present_initial_position = original_initial_joint_positions
     present_control_vector = original_control_vector
