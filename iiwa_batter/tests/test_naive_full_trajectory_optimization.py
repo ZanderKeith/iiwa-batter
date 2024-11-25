@@ -53,7 +53,7 @@ def test_save_load_consistency():
     ball_initial_velocity, ball_time_of_flight = find_ball_initial_velocity(target_velocity_mph, target_position)
     trajectory_timesteps = np.arange(0, ball_time_of_flight+CONTROL_DT, CONTROL_DT)
     torque_trajectory = make_torque_trajectory(control_vector, trajectory_timesteps)
-    simulator, diagram = setup_simulator(torque_trajectory, dt=test_dt)
+    simulator, diagram = setup_simulator(torque_trajectory, dt=test_dt, robot_constraints=JOINT_CONSTRAINTS[robot])
 
     reward = full_trajectory_reward(
         simulator=simulator,
@@ -67,3 +67,38 @@ def test_save_load_consistency():
     optimized_best_reward = results_dict["final_best_reward"]
 
     assert np.isclose(reward, optimized_best_reward)
+
+def test_contact_consistency():
+    target_velocity_mph = 90
+    target_position = [0, 0, 0.6]
+    test_dt = PITCH_DT
+
+    initial_joint_positions = np.ones(NUM_JOINTS)
+    
+
+    ball_initial_velocity, ball_time_of_flight = find_ball_initial_velocity(target_velocity_mph, target_position)
+    trajectory_timesteps = np.arange(0, ball_time_of_flight+CONTROL_DT, CONTROL_DT)
+    control_vector = np.ones((len(trajectory_timesteps), NUM_JOINTS))
+    torque_trajectory = make_torque_trajectory(control_vector, trajectory_timesteps)
+    simulator, diagram = setup_simulator(torque_trajectory, dt=test_dt)
+
+    reward_1 = full_trajectory_reward(
+        simulator=simulator,
+        diagram=diagram,
+        initial_joint_positions=initial_joint_positions,
+        control_vector=control_vector,
+        ball_initial_velocity=ball_initial_velocity,
+        ball_time_of_flight=ball_time_of_flight,
+    )
+
+    reward_2 = full_trajectory_reward(
+        simulator=simulator,
+        diagram=diagram,
+        initial_joint_positions=initial_joint_positions,
+        control_vector=control_vector,
+        ball_initial_velocity=ball_initial_velocity,
+        ball_time_of_flight=ball_time_of_flight,
+    )
+
+    assert np.isclose(reward_1, reward_2)
+

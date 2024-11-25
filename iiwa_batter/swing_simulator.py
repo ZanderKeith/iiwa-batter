@@ -305,6 +305,7 @@ class CollisionCheckSystem(LeafSystem):
     def check_collision(self, context, output):
         if not self.initialized:
             self.initialized = True
+            output.SetFromVector(self.collision_severity*CONTACT_DT/self.simulator_dt)
             return
         # This only gets run when the output is evaluated...
         contact_results = self._contact_port.Eval(context)

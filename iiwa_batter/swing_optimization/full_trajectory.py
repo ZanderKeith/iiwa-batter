@@ -216,7 +216,7 @@ def single_full_trajectory_torque_and_position(
     if return_best:
         return best_initial_position, best_control_vector, best_reward
     else:
-        return present_initial_position, present_control_vector, present_reward, updated_initial_position, updated_control_vector
+        return updated_initial_position, updated_control_vector, present_reward
 
 
 def multi_full_trajectory(
