@@ -37,6 +37,6 @@ run_naive_full_trajectory_optimization(
     save_directory=save_directory,
     simulation_dt=test_dt,
     inner_iterations=1,
-    outer_iterations=1e4,
+    outer_iterations=int(1e4),
     debug_prints=True,
 )
