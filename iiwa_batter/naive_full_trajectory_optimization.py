@@ -28,10 +28,10 @@ def run_naive_full_trajectory_optimization(
     optimization_name,
     save_directory,
     simulation_dt=PITCH_DT,
-    inner_iterations=10,
-    outer_iterations=10,
+    iterations=100,
     debug_prints=False,
     save_interval=10,
+    initial_position_index=0,
 ):
 
     start_time = time.time()
@@ -45,14 +45,12 @@ def run_naive_full_trajectory_optimization(
     simulator, diagram = setup_simulator(torque_trajectory={}, dt=simulation_dt, robot_constraints=robot_constraints)
     ball_initial_velocity, ball_time_of_flight = find_ball_initial_velocity(target_velocity_mph, target_position)
     trajectory_timesteps = np.arange(0, ball_time_of_flight+CONTROL_DT, CONTROL_DT)
-    present_initial_position = find_initial_positions(simulator, diagram, robot_constraints, 1)[0]
+    present_initial_position = find_initial_positions(simulator, diagram, robot_constraints, initial_position_index+1)[initial_position_index]
     present_control_vector = initialize_control_vector(robot_constraints, len(trajectory_timesteps))
-    #present_initial_position = np.ones(7)
-    #present_control_vector = np.ones((len(trajectory_timesteps), 7))
 
     training_results = {}
     best_reward = -np.inf
-    for i in range(outer_iterations):
+    for i in range(iterations):
         next_initial_position, next_control_vector, present_reward = single_full_trajectory_torque_and_position(
             simulator=simulator,
             diagram=diagram,
@@ -63,8 +61,6 @@ def run_naive_full_trajectory_optimization(
             position_constraints_upper=position_constraints_upper,
             position_constraints_lower=position_constraints_lower,
             torque_constraints=torque_constraints,
-            iterations=inner_iterations,
-            return_best=False,
             learning_rate=1
         )
 
@@ -83,7 +79,7 @@ def run_naive_full_trajectory_optimization(
             with open(f"{save_directory}/{optimization_name}.dill", "wb") as f:
                 dill.dump(training_results, f)
 
-        if i < outer_iterations - 1:
+        if i < iterations - 1:
             present_initial_position = next_initial_position
             present_control_vector = next_control_vector
 

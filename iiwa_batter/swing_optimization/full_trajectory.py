@@ -148,75 +148,53 @@ def single_full_trajectory_torque_and_position(
     position_constraints_upper,
     position_constraints_lower,
     torque_constraints,
-    best_reward=-np.inf,
     learning_rate=1,
-    iterations=10,
-    return_best=False,
 ):
     """Run stochastic optimization on the control vector for a single full trajectory, only updating the torque values"""
 
     present_initial_position = original_initial_joint_positions
     present_control_vector = original_control_vector
 
-    for i in range(iterations):
-        present_reward = full_trajectory_reward(
-            simulator,
-            diagram,
-            present_initial_position,
-            present_control_vector,
-            ball_initial_velocity,
-            ball_time_of_flight,
-        )
+    present_reward = full_trajectory_reward(
+        simulator,
+        diagram,
+        present_initial_position,
+        present_control_vector,
+        ball_initial_velocity,
+        ball_time_of_flight,
+    )
 
-        if present_reward > best_reward:
-            best_reward = present_reward
-            best_initial_position = present_initial_position
-            best_control_vector = present_control_vector
+    perturbed_initial_position = perturb_vector(present_initial_position, np.deg2rad(1), position_constraints_upper, position_constraints_lower)
+    perturbed_control_vector = perturb_vector(present_control_vector, 1, torque_constraints, -torque_constraints)
+    perturbed_reward = full_trajectory_reward(
+        simulator,
+        diagram,
+        perturbed_initial_position,
+        perturbed_control_vector,
+        ball_initial_velocity,
+        ball_time_of_flight,
+    )
 
-        perturbed_initial_position = perturb_vector(present_initial_position, np.deg2rad(1), position_constraints_upper, position_constraints_lower)
-        perturbed_control_vector = perturb_vector(present_control_vector, 1, torque_constraints, -torque_constraints)
-        perturbed_reward = full_trajectory_reward(
-            simulator,
-            diagram,
-            perturbed_initial_position,
-            perturbed_control_vector,
-            ball_initial_velocity,
-            ball_time_of_flight,
-        )
+    updated_initial_position = descent_step(
+        present_initial_position,
+        perturbed_initial_position,
+        present_reward,
+        perturbed_reward,
+        learning_rate,
+        position_constraints_upper,
+        position_constraints_lower,
+    )
+    updated_control_vector = descent_step(
+        present_control_vector,
+        perturbed_control_vector,
+        present_reward,
+        perturbed_reward,
+        learning_rate,
+        torque_constraints,
+        -torque_constraints,
+    )
 
-        if perturbed_reward > best_reward:
-            best_reward = perturbed_reward
-            best_initial_position = perturbed_initial_position
-            best_control_vector = perturbed_control_vector
-
-        updated_initial_position = descent_step(
-            present_initial_position,
-            perturbed_initial_position,
-            present_reward,
-            perturbed_reward,
-            learning_rate,
-            position_constraints_upper,
-            position_constraints_lower,
-        )
-        updated_control_vector = descent_step(
-            present_control_vector,
-            perturbed_control_vector,
-            present_reward,
-            perturbed_reward,
-            learning_rate,
-            torque_constraints,
-            -torque_constraints,
-        )
-
-        # Only update the present values if we are not on the last iteration
-        if i < iterations - 1:
-            present_initial_position = updated_initial_position
-            present_control_vector = updated_control_vector
-        
-    if return_best:
-        return best_initial_position, best_control_vector, best_reward
-    else:
-        return updated_initial_position, updated_control_vector, present_reward
+    return updated_initial_position, updated_control_vector, present_reward
 
 
 def multi_full_trajectory(

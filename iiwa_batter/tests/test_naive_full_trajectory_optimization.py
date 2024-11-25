@@ -22,13 +22,13 @@ from iiwa_batter.swing_optimization.stochastic_gradient_descent import make_torq
 
 from iiwa_batter.naive_full_trajectory_optimization import run_naive_full_trajectory_optimization
 
-def test_save_load_consistency_single_single():
+def test_save_load_consistency_single():
     # Ensure that we can successfully restore the optimization results from a saved file
 
     robot = "iiwa14"
     target_velocity_mph = 90
     target_position = [0, 0, 0.6]
-    optimization_name = "test_save_load_consistency_single_single"
+    optimization_name = "test_save_load_consistency_single"
     save_directory = f"{PACKAGE_ROOT}/tests/trajectories"
     test_dt = PITCH_DT
 
@@ -39,8 +39,7 @@ def test_save_load_consistency_single_single():
         optimization_name=optimization_name,
         save_directory=save_directory,
         simulation_dt=test_dt,
-        inner_iterations=1,
-        outer_iterations=1,
+        iterations=1,
         debug_prints=False,
     )
 
@@ -68,13 +67,13 @@ def test_save_load_consistency_single_single():
 
     assert np.isclose(reward, optimized_best_reward)
 
-def test_save_load_consistency_single_multi():
+def test_save_load_consistency_multi():
     # Ensure that we can successfully restore the optimization results from a saved file
 
     robot = "iiwa14"
     target_velocity_mph = 90
     target_position = [0, 0, 0.6]
-    optimization_name = "test_save_load_consistency_single_multi"
+    optimization_name = "test_save_load_consistency_multi"
     save_directory = f"{PACKAGE_ROOT}/tests/trajectories"
     test_dt = PITCH_DT
 
@@ -85,8 +84,7 @@ def test_save_load_consistency_single_multi():
         optimization_name=optimization_name,
         save_directory=save_directory,
         simulation_dt=test_dt,
-        inner_iterations=1,
-        outer_iterations=3,
+        iterations=3,
         debug_prints=False,
     )
 
@@ -114,97 +112,73 @@ def test_save_load_consistency_single_multi():
 
     assert np.isclose(reward, optimized_best_reward)
 
-def test_save_load_consistency_multi_single():
-    # Ensure that we can successfully restore the optimization results from a saved file
+
+def test_different_initial_positions():
+    # Ensure that selecting a different initial position yields a different result.
 
     robot = "iiwa14"
     target_velocity_mph = 90
     target_position = [0, 0, 0.6]
-    optimization_name = "test_save_load_consistency_multi_single"
+    optimization_name = "test_different_initial_positions"
     save_directory = f"{PACKAGE_ROOT}/tests/trajectories"
     test_dt = PITCH_DT
 
-    run_naive_full_trajectory_optimization(
-        robot=robot,
-        target_velocity_mph=target_velocity_mph,
-        target_position=target_position,
-        optimization_name=optimization_name,
-        save_directory=save_directory,
-        simulation_dt=test_dt,
-        inner_iterations=3,
-        outer_iterations=1,
-        debug_prints=False,
-    )
+    num_initial_positions = 4
 
-    with open(f"{save_directory}/{optimization_name}.dill", "rb") as f:
-        results_dict = dill.load(f)
+    rewards = []
+    for i in range(num_initial_positions):
+        run_naive_full_trajectory_optimization(
+            robot=robot,
+            target_velocity_mph=target_velocity_mph,
+            target_position=target_position,
+            optimization_name=optimization_name,
+            save_directory=save_directory,
+            simulation_dt=test_dt,
+            iterations=1,
+            debug_prints=False,
+            initial_position_index=i,
+        )
 
-    initial_joint_positions = results_dict["best_initial_position"]
-    control_vector = results_dict["best_control_vector"]
+        with open(f"{save_directory}/{optimization_name}.dill", "rb") as f:
+            results_dict = dill.load(f)
 
-    ball_initial_velocity, ball_time_of_flight = find_ball_initial_velocity(target_velocity_mph, target_position)
-    trajectory_timesteps = np.arange(0, ball_time_of_flight+CONTROL_DT, CONTROL_DT)
-    torque_trajectory = make_torque_trajectory(control_vector, trajectory_timesteps)
-    simulator, diagram = setup_simulator(torque_trajectory, dt=test_dt, robot_constraints=JOINT_CONSTRAINTS[robot])
+        rewards.append(results_dict["final_best_reward"])
 
-    reward = full_trajectory_reward(
-        simulator=simulator,
-        diagram=diagram,
-        initial_joint_positions=initial_joint_positions,
-        control_vector=control_vector,
-        ball_initial_velocity=ball_initial_velocity,
-        ball_time_of_flight=ball_time_of_flight,
-    )
+    assert len(set(rewards)) == num_initial_positions
 
-    optimized_best_reward = results_dict["final_best_reward"]
-
-    assert np.isclose(reward, optimized_best_reward)
-
-def test_save_load_consistency_multi_multi():
-    # Ensure that we can successfully restore the optimization results from a saved file
+def test_identical_initial_positions():
+    # Ensure that selecting the same initial position yields the same result.
 
     robot = "iiwa14"
     target_velocity_mph = 90
     target_position = [0, 0, 0.6]
-    optimization_name = "test_save_load_consistency"
+    optimization_name = "test_identical_initial_positions"
     save_directory = f"{PACKAGE_ROOT}/tests/trajectories"
     test_dt = PITCH_DT
 
-    run_naive_full_trajectory_optimization(
-        robot=robot,
-        target_velocity_mph=target_velocity_mph,
-        target_position=target_position,
-        optimization_name=optimization_name,
-        save_directory=save_directory,
-        simulation_dt=test_dt,
-        inner_iterations=3,
-        outer_iterations=3,
-        debug_prints=False,
-    )
+    num_initial_positions = 4
 
-    with open(f"{save_directory}/{optimization_name}.dill", "rb") as f:
-        results_dict = dill.load(f)
+    rewards = []
+    for i in range(num_initial_positions):
+        run_naive_full_trajectory_optimization(
+            robot=robot,
+            target_velocity_mph=target_velocity_mph,
+            target_position=target_position,
+            optimization_name=optimization_name,
+            save_directory=save_directory,
+            simulation_dt=test_dt,
+            iterations=1,
+            debug_prints=False,
+            initial_position_index=2,
+        )
 
-    initial_joint_positions = results_dict["best_initial_position"]
-    control_vector = results_dict["best_control_vector"]
+        with open(f"{save_directory}/{optimization_name}.dill", "rb") as f:
+            results_dict = dill.load(f)
 
-    ball_initial_velocity, ball_time_of_flight = find_ball_initial_velocity(target_velocity_mph, target_position)
-    trajectory_timesteps = np.arange(0, ball_time_of_flight+CONTROL_DT, CONTROL_DT)
-    torque_trajectory = make_torque_trajectory(control_vector, trajectory_timesteps)
-    simulator, diagram = setup_simulator(torque_trajectory, dt=test_dt, robot_constraints=JOINT_CONSTRAINTS[robot])
+        rewards.append(results_dict["final_best_reward"])
 
-    reward = full_trajectory_reward(
-        simulator=simulator,
-        diagram=diagram,
-        initial_joint_positions=initial_joint_positions,
-        control_vector=control_vector,
-        ball_initial_velocity=ball_initial_velocity,
-        ball_time_of_flight=ball_time_of_flight,
-    )
+    assert len(set(rewards)) == 1
 
-    optimized_best_reward = results_dict["final_best_reward"]
-
-    assert np.isclose(reward, optimized_best_reward)
 
 def test_contact_consistency():
     target_velocity_mph = 90
