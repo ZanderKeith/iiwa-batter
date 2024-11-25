@@ -119,7 +119,7 @@ def test_compare_simulation_dt_final_state():
     }
 
     simulator_contact_dt, diagram_contact_dt = setup_simulator(
-        torque_trajectory=torque_trajectory, dt=CONTACT_DT
+        torque_trajectory=torque_trajectory, dt=CONTACT_DT, add_contact=False
     )
 
     run_swing_simulation(
@@ -138,7 +138,7 @@ def test_compare_simulation_dt_final_state():
     )
 
     simulator_pitch_dt, diagram_pitch_dt = setup_simulator(
-        torque_trajectory=torque_trajectory, dt=PITCH_DT
+        torque_trajectory=torque_trajectory, dt=PITCH_DT, add_contact=False
     )
 
     run_swing_simulation(
@@ -579,6 +579,11 @@ def test_reset_clears_hydroelastic_contact():
     station = diagram.GetSubsystemByName("station")
     simulator_context = simulator.get_context()
     station_context = station.GetMyContextFromRoot(simulator_context)
+    contact_results = station.GetOutputPort("contact_results").Eval(station_context)
+    num_hydroelastic_contacts = contact_results.num_hydroelastic_contacts()
+    assert num_hydroelastic_contacts == 0
+
+    simulator.AdvanceTo(0.0004)
     contact_results = station.GetOutputPort("contact_results").Eval(station_context)
     num_hydroelastic_contacts = contact_results.num_hydroelastic_contacts()
     assert num_hydroelastic_contacts == 0

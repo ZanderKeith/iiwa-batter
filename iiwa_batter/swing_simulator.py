@@ -303,6 +303,9 @@ class CollisionCheckSystem(LeafSystem):
         self.set_name("collision_check_system")
 
     def check_collision(self, context, output):
+        if not self.initialized:
+            self.initialized = True
+            return
         # This only gets run when the output is evaluated...
         contact_results = self._contact_port.Eval(context)
         num_hydroelastic_contacts = contact_results.num_hydroelastic_contacts()
@@ -339,6 +342,7 @@ class CollisionCheckSystem(LeafSystem):
         self.collision_severity = np.zeros(1)
         self.num_collision_timesteps = 0
         self.terminated = False
+        self.initialized = False
 
 
 def setup_simulator(torque_trajectory, dt=CONTACT_DT, meshcat=None, plot_diagram=False, add_contact=True, robot_constraints=None, model_urdf="iiwa14"):
@@ -525,6 +529,7 @@ def run_swing_simulation(
     plant: Diagram = station.GetSubsystemByName("plant")
     collision_check_system: LeafSystem = diagram.GetSubsystemByName("collision_check_system")
     simulator_context = simulator.get_context()
+    station_context = station.GetMyContextFromRoot(simulator_context)
     plant_context = plant.GetMyContextFromRoot(simulator_context)
     collision_check_system_context = collision_check_system.GetMyContextFromRoot(simulator_context)
 
