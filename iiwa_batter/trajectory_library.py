@@ -289,5 +289,5 @@ if __name__ == "__main__":
     #robots = ["iiwa14", "kr6r900", "slugger", "batter"]
     robots = ["iiwa14"]
     for robot in robots:
-        reset(robot)
+        #reset(robot)
         make_trajectory_library(robot)

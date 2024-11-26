@@ -1,30 +1,22 @@
 import numpy as np
-from multiprocessing import Pool
 
 from pydrake.all import (
     Diagram,
     Simulator,
 )
 from iiwa_batter import (
-    CONTACT_DT,
-    PITCH_DT,
-    CONTROL_DT,
     NUM_JOINTS,
 )
-
 from iiwa_batter.physics import (
     PITCH_START_POSITION,
     FLIGHT_TIME_MULTIPLE,
-    find_ball_initial_velocity,
     ball_flight_path,
     ball_distance_multiplier,
 )
-from iiwa_batter.robot_constraints.get_joint_constraints import JOINT_CONSTRAINTS
 from iiwa_batter.swing_simulator import (
     parse_simulation_state,
     reset_systems,
     run_swing_simulation,
-    setup_simulator,
 )
 from iiwa_batter.swing_optimization.stochastic_gradient_descent import (
     make_torque_trajectory,
