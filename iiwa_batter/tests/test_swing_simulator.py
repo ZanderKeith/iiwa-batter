@@ -27,7 +27,7 @@ from iiwa_batter.swing_simulator import (
 def test_setup_simulator():
     # Ensure the simulator and diagram are created with the correct subsystems
 
-    simulator, diagram = setup_simulator(torque_trajectory={}, plot_diagram=True)
+    simulator, diagram = setup_simulator(torque_trajectory={}, model_urdf="iiwa14", plot_diagram=True)
     assert simulator is not None
     assert diagram is not None
 
@@ -49,8 +49,8 @@ def test_torque_trajectory_change_on_reset():
     torque_trajectory_1 = {0: np.array([0] * NUM_JOINTS), 1: np.array([1] * NUM_JOINTS)}
     torque_trajectory_2 = {0: np.array([2] * NUM_JOINTS), 1: np.array([3] * NUM_JOINTS)}
 
-    simulator_1, diagram_1 = setup_simulator(torque_trajectory=torque_trajectory_1, add_contact=False)
-    simulator_2, diagram_2 = setup_simulator(torque_trajectory=torque_trajectory_2, add_contact=False)
+    simulator_1, diagram_1 = setup_simulator(torque_trajectory=torque_trajectory_1, model_urdf="iiwa14", add_contact=False)
+    simulator_2, diagram_2 = setup_simulator(torque_trajectory=torque_trajectory_2, model_urdf="iiwa14", add_contact=False)
 
     # Run the simulation with the first torque trajectory, reset, and run with the second torque trajectory
     run_swing_simulation(
@@ -119,7 +119,7 @@ def test_compare_simulation_dt_final_state():
     }
 
     simulator_contact_dt, diagram_contact_dt = setup_simulator(
-        torque_trajectory=torque_trajectory, dt=CONTACT_DT, add_contact=False
+        torque_trajectory=torque_trajectory, model_urdf="iiwa14", dt=CONTACT_DT, add_contact=False
     )
 
     run_swing_simulation(
@@ -138,7 +138,7 @@ def test_compare_simulation_dt_final_state():
     )
 
     simulator_pitch_dt, diagram_pitch_dt = setup_simulator(
-        torque_trajectory=torque_trajectory, dt=PITCH_DT, add_contact=False
+        torque_trajectory=torque_trajectory, model_urdf="iiwa14", dt=PITCH_DT, add_contact=False
     )
 
     run_swing_simulation(
@@ -191,7 +191,7 @@ def test_self_collision_check():
     # Ensure the collision check system works for self-collisions
 
     simulator, diagram = setup_simulator(
-        torque_trajectory={}, dt=PITCH_DT
+        torque_trajectory={}, model_urdf="iiwa14", dt=PITCH_DT
     )
 
     status_dict = run_swing_simulation(
@@ -212,7 +212,7 @@ def test_self_collision_check():
 def test_non_self_collision_check():
     # Ensure the simulator doesn't report a collision when the ball and the bat collide
     simulator_contact_dt, diagram_contact_dt = setup_simulator(
-        torque_trajectory={}, dt=PITCH_DT
+        torque_trajectory={}, model_urdf="iiwa14", dt=PITCH_DT
     )
 
     initial_ball_velocity, _ = find_ball_initial_velocity(90, [0, 0.9, 1.2])
@@ -236,10 +236,10 @@ def test_collision_doesnt_affect_final_state():
     # Ensure adding the collision geometry doesn't affect the final state of the system
 
     simulator_collision, diagram_collision = setup_simulator(
-        torque_trajectory={}, dt=PITCH_DT, add_contact=True
+        torque_trajectory={}, model_urdf="iiwa14", dt=PITCH_DT, add_contact=True
     )
     simulator_no_collision, diagram_no_collision = setup_simulator(
-        torque_trajectory={}, dt=PITCH_DT, add_contact=False
+        torque_trajectory={}, model_urdf="iiwa14", dt=PITCH_DT, add_contact=False
     )
 
     run_swing_simulation(
@@ -284,7 +284,7 @@ def test_large_torque_doesnt_crash():
     }
 
     simulator, diagram = setup_simulator(
-        torque_trajectory=torque_trajectory, dt=PITCH_DT, add_contact=False
+        torque_trajectory=torque_trajectory, model_urdf="iiwa14", dt=PITCH_DT, add_contact=False
     )
 
     run_swing_simulation(
@@ -307,7 +307,7 @@ def test_joint_limits():
     # Ensure joint position limits are enforced
     robot_constraints = JOINT_CONSTRAINTS["iiwa14"]
 
-    simulator, diagram = setup_simulator(torque_trajectory={0:np.ones(NUM_JOINTS)*80}, dt=PITCH_DT, add_contact=False, robot_constraints=robot_constraints)
+    simulator, diagram = setup_simulator(torque_trajectory={0:np.ones(NUM_JOINTS)*80}, model_urdf="iiwa14", dt=PITCH_DT, add_contact=False, robot_constraints=robot_constraints)
 
     status_dict = run_swing_simulation(
         simulator=simulator,
@@ -330,7 +330,7 @@ def test_joint_limits():
             assert positions[0]*1.01 <= joint_positions[int(joint)-1] <= positions[1]*1.01, f"Joint {joint} has position {joint_positions[int(joint)-1]} at time {time}"
             assert -robot_constraints["joint_velocity"][joint] <= joint_velocities[int(joint)-1] <= robot_constraints["joint_velocity"][joint], f"Joint {joint} has velocity {joint_velocities[int(joint)-1]} at time {time}"
 
-    simulator, diagram = setup_simulator(torque_trajectory={0:np.ones(NUM_JOINTS)*-80}, dt=PITCH_DT, add_contact=False, robot_constraints=robot_constraints)
+    simulator, diagram = setup_simulator(torque_trajectory={0:np.ones(NUM_JOINTS)*-80}, model_urdf="iiwa14", dt=PITCH_DT, add_contact=False, robot_constraints=robot_constraints)
 
     status_dict = run_swing_simulation(
         simulator=simulator,
@@ -363,7 +363,7 @@ def test_joint_limits():
 def test_simulator_time_advance():
     # This one is just for me, what actually happens when the simulator advances time?
 
-    simulator, diagram = setup_simulator(torque_trajectory={}, dt=PITCH_DT, add_contact=False)
+    simulator, diagram = setup_simulator(torque_trajectory={}, model_urdf="iiwa14", dt=PITCH_DT, add_contact=False)
 
     run_swing_simulation(
         simulator=simulator,
@@ -395,7 +395,7 @@ def test_simulation_state_preservation_no_trajectory():
         0: np.zeros(NUM_JOINTS),
     }
 
-    simulator, diagram = setup_simulator(torque_trajectory=torque_trajectory, dt=PITCH_DT, add_contact=False, robot_constraints=None)
+    simulator, diagram = setup_simulator(torque_trajectory=torque_trajectory, model_urdf="iiwa14", dt=PITCH_DT, add_contact=False, robot_constraints=None)
     run_swing_simulation(
         simulator=simulator,
         diagram=diagram,
@@ -465,7 +465,7 @@ def test_nonzero_start_time():
         1: np.ones(NUM_JOINTS)*40
     }
 
-    simulator, diagram = setup_simulator(torque_trajectory, dt=PITCH_DT, add_contact=False)
+    simulator, diagram = setup_simulator(torque_trajectory, model_urdf="iiwa14", dt=PITCH_DT, add_contact=False)
 
     run_swing_simulation(
         simulator=simulator,
@@ -487,7 +487,7 @@ def test_nonzero_start_time():
 def test_collision_severity_reset():
     # Ensure the collision severity is properly reset when the system is reset
     simulator, diagram = setup_simulator(
-        torque_trajectory={}, dt=PITCH_DT
+        torque_trajectory={}, model_urdf="iiwa14", dt=PITCH_DT
     )
 
     status_dict = run_swing_simulation(
@@ -543,7 +543,7 @@ def test_collision_severity_reset():
 
 def test_reset_clears_hydroelastic_contact():
     simulator, diagram = setup_simulator(
-        torque_trajectory={}, dt=PITCH_DT
+        torque_trajectory={}, model_urdf="iiwa14", dt=PITCH_DT
     )
 
     status_dict = run_swing_simulation(

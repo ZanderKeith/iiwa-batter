@@ -18,7 +18,6 @@ from iiwa_batter.swing_optimization.stochastic_gradient_descent import (
 from iiwa_batter.swing_optimization.full_trajectory import (
     single_full_trajectory_torque_only,
     single_full_trajectory_torque_and_position,
-    multi_full_trajectory,
 )
 
 def test_run_single_full_trajectory_torque_only():
@@ -31,7 +30,7 @@ def test_run_single_full_trajectory_torque_only():
     trajectory_timesteps = np.arange(0, ball_time_of_flight+CONTROL_DT, CONTROL_DT)
     initial_control_vector = initialize_control_vector(robot_constraints, len(trajectory_timesteps))
 
-    simulator, diagram = setup_simulator(torque_trajectory={}, dt=PITCH_DT, robot_constraints=robot_constraints)
+    simulator, diagram = setup_simulator(torque_trajectory={}, model_urdf="iiwa14", dt=PITCH_DT, robot_constraints=robot_constraints)
     best_control_vector, best_reward = single_full_trajectory_torque_only(
         simulator=simulator,
         diagram=diagram,
@@ -60,7 +59,7 @@ def test_run_single_full_trajectory_torque_and_position():
     initial_joint_position = np.array([0]*NUM_JOINTS)
     initial_control_vector = initialize_control_vector(robot_constraints, len(trajectory_timesteps))
 
-    simulator, diagram = setup_simulator(torque_trajectory={}, dt=PITCH_DT, robot_constraints=robot_constraints)
+    simulator, diagram = setup_simulator(torque_trajectory={}, model_urdf="iiwa14", dt=PITCH_DT, robot_constraints=robot_constraints)
     best_initial_position, best_control_vector, best_reward = single_full_trajectory_torque_and_position(
         simulator=simulator,
         diagram=diagram,

@@ -52,7 +52,7 @@ def test_save_load_consistency_single():
     ball_initial_velocity, ball_time_of_flight = find_ball_initial_velocity(target_velocity_mph, target_position)
     trajectory_timesteps = np.arange(0, ball_time_of_flight+CONTROL_DT, CONTROL_DT)
     torque_trajectory = make_torque_trajectory(control_vector, trajectory_timesteps)
-    simulator, diagram = setup_simulator(torque_trajectory, dt=test_dt, robot_constraints=JOINT_CONSTRAINTS[robot])
+    simulator, diagram = setup_simulator(torque_trajectory, model_urdf="iiwa14", dt=test_dt, robot_constraints=JOINT_CONSTRAINTS[robot])
 
     reward = full_trajectory_reward(
         simulator=simulator,
@@ -97,7 +97,7 @@ def test_save_load_consistency_multi():
     ball_initial_velocity, ball_time_of_flight = find_ball_initial_velocity(target_velocity_mph, target_position)
     trajectory_timesteps = np.arange(0, ball_time_of_flight+CONTROL_DT, CONTROL_DT)
     torque_trajectory = make_torque_trajectory(control_vector, trajectory_timesteps)
-    simulator, diagram = setup_simulator(torque_trajectory, dt=test_dt, robot_constraints=JOINT_CONSTRAINTS[robot])
+    simulator, diagram = setup_simulator(torque_trajectory, model_urdf="iiwa14", dt=test_dt, robot_constraints=JOINT_CONSTRAINTS[robot])
 
     reward = full_trajectory_reward(
         simulator=simulator,
@@ -192,7 +192,7 @@ def test_contact_consistency():
     trajectory_timesteps = np.arange(0, ball_time_of_flight+CONTROL_DT, CONTROL_DT)
     control_vector = np.ones((len(trajectory_timesteps), NUM_JOINTS))
     torque_trajectory = make_torque_trajectory(control_vector, trajectory_timesteps)
-    simulator, diagram = setup_simulator(torque_trajectory, dt=test_dt)
+    simulator, diagram = setup_simulator(torque_trajectory, model_urdf="iiwa14", dt=test_dt)
 
     reward_1 = full_trajectory_reward(
         simulator=simulator,

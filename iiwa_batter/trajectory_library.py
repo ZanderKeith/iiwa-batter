@@ -37,11 +37,17 @@ from iiwa_batter.naive_full_trajectory_optimization import (
     run_naive_full_trajectory_optimization_hot_start_torque_only,
 )
 
-NUM_PROCESSES = 8
+# NUM_PROCESSES = 8
+# NUM_INITIAL_POSITIONS = 8
+# MAIN_COARSE_ITERATIONS = 1000 # TODO: Change this to 1000
+# MAIN_FINE_ITERATIONS = 100
+# GROUP_COARSE_ITERATIONS = 200
+# GROUP_FINE_ITERATIONS = 10
 
-NUM_INITIAL_POSITIONS = 8
-MAIN_COARSE_ITERATIONS = 10 # TODO: Change this to 1000
-MAIN_FINE_ITERATIONS = 10
+NUM_PROCESSES = 2
+NUM_INITIAL_POSITIONS = 2
+MAIN_COARSE_ITERATIONS = 2
+MAIN_FINE_ITERATIONS = 1
 GROUP_COARSE_ITERATIONS = 2
 GROUP_FINE_ITERATIONS = 1
 
@@ -84,7 +90,7 @@ class Trajectory:
         ball_initial_velocity, ball_time_of_flight = find_ball_initial_velocity(self.target_speed_mph, self.target_position)
         trajectory_timesteps = np.arange(0, ball_time_of_flight+CONTROL_DT, CONTROL_DT)
         torque_trajectory = make_torque_trajectory(control_vector, trajectory_timesteps)
-        simulator, diagram = setup_simulator(torque_trajectory, dt=dt, robot_constraints=robot_constraints)
+        simulator, diagram = setup_simulator(torque_trajectory, model_urdf=self.robot, dt=dt, robot_constraints=robot_constraints)
 
         status_dict = run_swing_simulation(
             simulator=simulator,
@@ -228,8 +234,6 @@ def make_trajectory_library(robot):
     best_initial_position = results["best_initial_position"]
     best_control_vector = results["best_control_vector"]
 
-    # TODO: Add plots of the training progress.
-
     # 2. Using the best swing at the main target as an initial guess, do a coarse optimization for the rest of the targets
     group_coarse_pool = Pool(NUM_PROCESSES)
     group_coarse_pool.starmap(group_coarse_optimization, [(robot, target_speed_mph, target_position, best_initial_position, best_control_vector) for target_speed_mph in LIBRARY_SPEEDS_MPH for target_position in LIBRARY_POSITIONS])
@@ -250,6 +254,8 @@ def reset(robot):
         pass
 
 if __name__ == "__main__":
-    robot = "iiwa14"
-    reset(robot)
-    make_trajectory_library(robot)
+    robots = ["iiwa14", "kr6r900", "slugger", "batter"]
+    #robots = ["iiwa14", "slugger"]
+    for robot in robots:
+        reset(robot)
+        make_trajectory_library(robot)

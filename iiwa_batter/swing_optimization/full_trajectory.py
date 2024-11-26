@@ -184,42 +184,43 @@ def single_full_trajectory_torque_and_position(
     return updated_initial_position, updated_control_vector, present_reward
 
 
-def multi_full_trajectory(
-    targets,
-    robot_constraints,
-    original_initial_position,
-    simulation_dt=CONTACT_DT,
-    substeps=8, # How many single runs to do between updating the initial position
-    save_interval=100,
-    top_level_iterations=1000, # How many times to update the initial position
-):
-    # Initialize the simulator and diagram
-    # Keeping these separate for each trajectory, can't re-make them over and over or it causes memory issues
-    target_details = {}
-    for i, target in enumerate(targets):
-        # Determine how many timesteps are needed for the control vector
-        simulator, diagram = setup_simulator(
-            torque_trajectory={},
-            dt = simulation_dt,
-            robot_constraints=robot_constraints,
-            model_urdf=robot_constraints["model"]
-        )
-        target_dict = {
-            "simulator": simulator,
-            "diagram": diagram,
-            "target": target,
-            "substeps": substeps,
-            "initial_position": original_initial_position,
-        }
-        target_details[i] = target_dict
+# def multi_full_trajectory(
+#     targets,
+#     robot_constraints,
+#     original_initial_position,
+#     simulation_dt=CONTACT_DT,
+#     substeps=8, # How many single runs to do between updating the initial position
+#     save_interval=100,
+#     top_level_iterations=1000, # How many times to update the initial position
+# ):
+#     # Initialize the simulator and diagram
+#     # Keeping these separate for each trajectory, can't re-make them over and over or it causes memory issues
+#     target_details = {}
+#     for i, target in enumerate(targets):
+#         # Determine how many timesteps are needed for the control vector
+#         simulator, diagram = setup_simulator(
+#             torque_trajectory={},
+#             model_urdf="robot",
+#             dt = simulation_dt,
+#             robot_constraints=robot_constraints,
+#             model_urdf=robot_constraints["model"]
+#         )
+#         target_dict = {
+#             "simulator": simulator,
+#             "diagram": diagram,
+#             "target": target,
+#             "substeps": substeps,
+#             "initial_position": original_initial_position,
+#         }
+#         target_details[i] = target_dict
 
-    best_reward = -np.inf
-    best_initial_position = original_initial_position
-    for i in range(top_level_iterations):
-        pass
+#     best_reward = -np.inf
+#     best_initial_position = original_initial_position
+#     for i in range(top_level_iterations):
+#         pass
 
-        # Determine the loss using the current initial position
+#         # Determine the loss using the current initial position
 
-        # Determine the loss after after perturbing the initial position
+#         # Determine the loss after after perturbing the initial position
 
-        # Update the initial position based on the gradient
+#         # Update the initial position based on the gradient

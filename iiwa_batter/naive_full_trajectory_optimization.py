@@ -43,7 +43,7 @@ def run_naive_full_trajectory_optimization(
     position_constraints_upper = np.array([joint[1] for joint in robot_constraints["joint_range"].values()])
     position_constraints_lower = np.array([joint[0] for joint in robot_constraints["joint_range"].values()])
 
-    simulator, diagram = setup_simulator(torque_trajectory={}, dt=simulation_dt, robot_constraints=robot_constraints)
+    simulator, diagram = setup_simulator(torque_trajectory={}, model_urdf=robot, dt=simulation_dt, robot_constraints=robot_constraints)
     ball_initial_velocity, ball_time_of_flight = find_ball_initial_velocity(target_velocity_mph, target_position)
     trajectory_timesteps = np.arange(0, ball_time_of_flight+CONTROL_DT, CONTROL_DT)
     present_initial_position = find_initial_positions(simulator, diagram, robot_constraints, initial_position_index+1)[initial_position_index]
@@ -120,7 +120,7 @@ def run_naive_full_trajectory_optimization_hot_start(
     position_constraints_upper = np.array([joint[1] for joint in robot_constraints["joint_range"].values()])
     position_constraints_lower = np.array([joint[0] for joint in robot_constraints["joint_range"].values()])
 
-    simulator, diagram = setup_simulator(torque_trajectory={}, dt=simulation_dt, robot_constraints=robot_constraints)
+    simulator, diagram = setup_simulator(torque_trajectory={}, model_urdf=robot, dt=simulation_dt, robot_constraints=robot_constraints)
     ball_initial_velocity, ball_time_of_flight = find_ball_initial_velocity(target_velocity_mph, target_position)
 
     training_results = {}
@@ -192,7 +192,7 @@ def run_naive_full_trajectory_optimization_hot_start_torque_only(
     robot_constraints = JOINT_CONSTRAINTS[robot]
     torque_constraints = np.array([int(torque) for torque in robot_constraints["torque"].values()])
 
-    simulator, diagram = setup_simulator(torque_trajectory={}, dt=simulation_dt, robot_constraints=robot_constraints)
+    simulator, diagram = setup_simulator(torque_trajectory={}, model_urdf=robot, dt=simulation_dt, robot_constraints=robot_constraints)
     ball_initial_velocity, ball_time_of_flight = find_ball_initial_velocity(target_velocity_mph, target_position)
 
     training_results = {}

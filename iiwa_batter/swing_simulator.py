@@ -346,7 +346,7 @@ class CollisionCheckSystem(LeafSystem):
         self.initialized = False
 
 
-def setup_simulator(torque_trajectory, dt=CONTACT_DT, meshcat=None, plot_diagram=False, add_contact=True, robot_constraints=None, model_urdf="iiwa14"):
+def setup_simulator(torque_trajectory, model_urdf, dt=CONTACT_DT, meshcat=None, plot_diagram=False, add_contact=True, robot_constraints=None):
     """Set up the simulator to run a swing given a torque trajectory.
 
     Parameters
