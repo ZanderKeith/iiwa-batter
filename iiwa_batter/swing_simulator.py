@@ -489,7 +489,6 @@ def run_swing_simulation(
     meshcat=None,
     check_dt=PITCH_DT,
     record_state=False,
-    setup_only=False,
 ) -> dict:
     """Run a swing simulation from start_time to end_time with the given initial conditions.
 
@@ -552,7 +551,9 @@ def run_swing_simulation(
         plant_context, ball, np.concatenate([np.zeros(3), initial_ball_velocity])
     )
 
-    if setup_only:
+    # Start time equaling end time means we don't actually want to advance the simulation,
+    # just wanted to initialize the positions and velocities
+    if start_time == end_time:
         return
 
     # Set up here so we don't need to re-evaluate every time

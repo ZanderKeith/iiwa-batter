@@ -9,6 +9,7 @@ from iiwa_batter.robot_constraints.get_joint_constraints import JOINT_CONSTRAINT
 from iiwa_batter.swing_optimization.stochastic_gradient_descent import (
     initialize_control_vector,
     expand_control_vector,
+    make_trajectory_timesteps,
     make_torque_trajectory,
     descent_step,
     perturb_vector,
@@ -19,47 +20,53 @@ def test_initialize_control_vector():
     np.random.seed(0)
 
     robot_constraints = JOINT_CONSTRAINTS["iiwa14"]
-    num_timesteps = 100
+    time_of_flight = 0.5
 
-    control_vector = initialize_control_vector(robot_constraints, num_timesteps)
+    trajectory_timesteps = make_trajectory_timesteps(time_of_flight)
+    control_vector = initialize_control_vector(robot_constraints, time_of_flight)
 
-    assert control_vector.shape == (num_timesteps, NUM_JOINTS)
+    assert control_vector.shape == (len(trajectory_timesteps), NUM_JOINTS)
     for i in range(NUM_JOINTS):
         assert np.all(control_vector[:, i] <= robot_constraints["torque"][str(i+1)])
         assert np.all(control_vector[:, i] >= -robot_constraints["torque"][str(i+1)])
 
 
 def test_expand_control_vector():
-    original_control_vector = np.ones((4, NUM_JOINTS))
-    new_num_timesteps = 8
+    np.random.seed(0)
+    original_flight_time = 0.05
+    original_control_vector = initialize_control_vector(JOINT_CONSTRAINTS["iiwa14"], original_flight_time)
 
-    expanded_control_vector = expand_control_vector(original_control_vector, new_num_timesteps)
+    new_flight_time = 0.08
+    expanded_control_vector = expand_control_vector(original_control_vector, new_flight_time)
+    expanded_comparison_control_vector = initialize_control_vector(JOINT_CONSTRAINTS["iiwa14"], new_flight_time)
 
-    assert expanded_control_vector.shape == (new_num_timesteps, NUM_JOINTS)
+    assert expanded_control_vector.shape == expanded_comparison_control_vector.shape
 
-    for i in range(new_num_timesteps-original_control_vector.shape[0]):
+    for i in range(expanded_control_vector.shape[0]-original_control_vector.shape[0]):
         assert np.all(expanded_control_vector[i] == np.zeros(NUM_JOINTS))
-    for i in range(new_num_timesteps-original_control_vector.shape[0], new_num_timesteps):
-        assert np.all(expanded_control_vector[i] == np.ones(NUM_JOINTS))
+    for i in range(expanded_control_vector.shape[0]-original_control_vector.shape[0], expanded_control_vector.shape[0]):
+        assert np.all(expanded_control_vector[i] != np.zeros(NUM_JOINTS)) # Highly unlikely for any to be perfectly 0
 
 
 def test_make_torque_trajectory():
     # Ensure that the torque trajectory is made correclty
-    control_timesteps = np.array([0, 1, 2, 3, 4])
+    control_timesteps = make_trajectory_timesteps(0.05)
     control_vector = np.array([
         [0, 0, 0], 
         [1, 1, 1], 
         [2, 2, 2], 
         [3, 3, 3], 
-        [4, 4, 4]
+        [4, 4, 4],
+        [5, 5, 5],
+        [6, 6, 6],
     ])
 
-    torque_trajectory = make_torque_trajectory(control_vector, control_timesteps)
+    torque_trajectory = make_torque_trajectory(control_vector, 0.05)
 
     assert len(torque_trajectory) == len(control_timesteps)
     assert np.all(torque_trajectory[0] == np.array([0, 0, 0]))
-    assert np.all(torque_trajectory[1] == np.array([1, 1, 1]))
-    assert np.all(torque_trajectory[4] == np.array([4, 4, 4]))
+    assert np.all(torque_trajectory[0.01] == np.array([1, 1, 1]))
+    assert np.all(torque_trajectory[0.04] == np.array([4, 4, 4]))
 
 
 def test_perturbed_vector_bounds():

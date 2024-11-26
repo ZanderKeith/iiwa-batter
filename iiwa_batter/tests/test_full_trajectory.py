@@ -19,22 +19,26 @@ from iiwa_batter.swing_optimization.full_trajectory import (
     single_full_trajectory_torque_only,
     single_full_trajectory_torque_and_position,
 )
+from iiwa_batter.trajectory_library import (
+    LIBRARY_SPEEDS_MPH,
+    LIBRARY_POSITIONS,
+)
 
 def test_run_single_full_trajectory_torque_only():
     # Try running the trajectory optimization with only the torque values being updated and ensure nothing breaks
     np.random.seed(0)
-    robot_constraints = JOINT_CONSTRAINTS["iiwa14"]
+    robot = "iiwa14"
+    robot_constraints = JOINT_CONSTRAINTS[robot]
     torque_constraints = np.array([int(torque) for torque in robot_constraints["torque"].values()])
 
-    ball_initial_velocity, ball_time_of_flight = find_ball_initial_velocity(90, [0, 0, 0.6])
-    trajectory_timesteps = np.arange(0, ball_time_of_flight+CONTROL_DT, CONTROL_DT)
-    initial_control_vector = initialize_control_vector(robot_constraints, len(trajectory_timesteps))
+    ball_initial_velocity, ball_time_of_flight = find_ball_initial_velocity(LIBRARY_SPEEDS_MPH[0], LIBRARY_POSITIONS[0])
+    initial_control_vector = initialize_control_vector(robot_constraints, ball_time_of_flight)
 
-    simulator, diagram = setup_simulator(torque_trajectory={}, model_urdf="iiwa14", dt=PITCH_DT, robot_constraints=robot_constraints)
-    best_control_vector, best_reward = single_full_trajectory_torque_only(
+    simulator, diagram = setup_simulator(torque_trajectory={}, model_urdf=robot, dt=PITCH_DT, robot_constraints=robot_constraints)
+    best_control_vector, _ = single_full_trajectory_torque_only(
         simulator=simulator,
         diagram=diagram,
-        initial_joint_positions=np.array([0]*NUM_JOINTS),
+        initial_joint_positions=np.zeros(NUM_JOINTS),
         original_control_vector=initial_control_vector,
         ball_initial_velocity=ball_initial_velocity,
         ball_time_of_flight=ball_time_of_flight,
@@ -49,17 +53,17 @@ def test_run_single_full_trajectory_torque_only():
 def test_run_single_full_trajectory_torque_and_position():
     # Try running the trajectory optimization with both the torque and position values being updated and ensure nothing breaks
     np.random.seed(0)
-    robot_constraints = JOINT_CONSTRAINTS["iiwa14"]
+    robot = "iiwa14"
+    robot_constraints = JOINT_CONSTRAINTS[robot]
     torque_constraints = np.array([int(torque) for torque in robot_constraints["torque"].values()])
     position_constraints_upper = np.array([joint[1] for joint in robot_constraints["joint_range"].values()])
     position_constraints_lower = np.array([joint[0] for joint in robot_constraints["joint_range"].values()])
 
-    ball_initial_velocity, ball_time_of_flight = find_ball_initial_velocity(90, [0, 0, 0.6])
-    trajectory_timesteps = np.arange(0, ball_time_of_flight+CONTROL_DT, CONTROL_DT)
-    initial_joint_position = np.array([0]*NUM_JOINTS)
-    initial_control_vector = initialize_control_vector(robot_constraints, len(trajectory_timesteps))
+    ball_initial_velocity, ball_time_of_flight = find_ball_initial_velocity(LIBRARY_SPEEDS_MPH[0], LIBRARY_POSITIONS[0])
+    initial_joint_position = np.zeros(NUM_JOINTS)
+    initial_control_vector = initialize_control_vector(robot_constraints, ball_time_of_flight)
 
-    simulator, diagram = setup_simulator(torque_trajectory={}, model_urdf="iiwa14", dt=PITCH_DT, robot_constraints=robot_constraints)
+    simulator, diagram = setup_simulator(torque_trajectory={}, model_urdf=robot, dt=PITCH_DT, robot_constraints=robot_constraints)
     best_initial_position, best_control_vector, best_reward = single_full_trajectory_torque_and_position(
         simulator=simulator,
         diagram=diagram,

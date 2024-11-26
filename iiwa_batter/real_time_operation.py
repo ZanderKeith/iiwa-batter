@@ -76,7 +76,7 @@ def real_time_operation(
         robot_constraints=JOINT_CONSTRAINTS[robot],
     )
     ball_initial_velocity_world, ball_time_of_flight_world = find_ball_initial_velocity(pitch_speed_world, pitch_position_world)
-    control_timesteps_world = np.arange(0, ball_time_of_flight_world+CONTROL_DT, CONTROL_DT)
+    control_timesteps_world = np.arange(0, ball_time_of_flight_world+2*CONTROL_DT, CONTROL_DT)
     
     # Measure the ball's position and speed in the world
     measured_pitch_speed, measured_pitch_position = measure_ball(pitch_speed_world, pitch_position_world, pitch_speed_measurement_error, pitch_position_measurement_error)
@@ -102,7 +102,6 @@ def real_time_operation(
         initial_joint_velocities=np.zeros(NUM_JOINTS),
         initial_ball_position=PITCH_START_POSITION,
         initial_ball_velocity=ball_initial_velocity_world,
-        setup_only=True,
     )
 
     taken_trajectory = {0: start_control_vector[0]}
@@ -131,8 +130,7 @@ def real_time_operation(
         present_joint_positions, present_joint_velocities = parse_simulation_state(simulator_world, diagram_world, "iiwa")
         present_ball_position, present_ball_velocity = parse_simulation_state(simulator_world, diagram_world, "ball")
 
-        #updated_trajectory = find_next_actions()
-        updated_trajectory = {0: np.zeros(NUM_JOINTS)}
+        updated_trajectory = find_next_actions()
         taken_trajectory[control_timestep] = updated_trajectory[control_timestep]
 
         # Apply the control to the world simulation

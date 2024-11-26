@@ -45,9 +45,8 @@ def run_naive_full_trajectory_optimization(
 
     simulator, diagram = setup_simulator(torque_trajectory={}, model_urdf=robot, dt=simulation_dt, robot_constraints=robot_constraints)
     ball_initial_velocity, ball_time_of_flight = find_ball_initial_velocity(target_velocity_mph, target_position)
-    trajectory_timesteps = np.arange(0, ball_time_of_flight+CONTROL_DT, CONTROL_DT)
     present_initial_position = find_initial_positions(simulator, diagram, robot_constraints, initial_position_index+1)[initial_position_index]
-    present_control_vector = initialize_control_vector(robot_constraints, len(trajectory_timesteps))
+    present_control_vector = initialize_control_vector(robot_constraints, ball_time_of_flight)
 
     training_results = {}
     best_reward = -np.inf

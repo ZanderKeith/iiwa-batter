@@ -44,8 +44,7 @@ def full_trajectory_reward(
     ball_time_of_flight,
 ):
 
-    trajectory_timesteps = np.arange(0, ball_time_of_flight+CONTROL_DT, CONTROL_DT)
-    torque_trajectory = make_torque_trajectory(control_vector, trajectory_timesteps)
+    torque_trajectory = make_torque_trajectory(control_vector, ball_time_of_flight)
     reset_systems(diagram, torque_trajectory)
 
     status_dict = run_swing_simulation(
