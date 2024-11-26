@@ -549,6 +549,17 @@ files = [
 tests = ["asttokens (>=2.1.0)", "coverage", "coverage-enable-subprocess", "ipython", "littleutils", "pytest", "rich"]
 
 [[package]]
+name = "fake-bpy-module-latest"
+version = "20241125"
+description = "Collection of the fake Blender Python API module for the code completion."
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "fake_bpy_module_latest-20241125-py3-none-any.whl", hash = "sha256:0b0c4fa58ab52a750fbae475e9965b003de57c174d446497c77004d003b1d731"},
+    {file = "fake_bpy_module_latest-20241125.tar.gz", hash = "sha256:d2f7e96fee98ef7041d509f4cde6552246287f68f5e944b296d8bc1deceed818"},
+]
+
+[[package]]
 name = "farama-notifications"
 version = "0.0.4"
 description = "Notifications for all Farama Foundation maintained libraries."
@@ -3669,4 +3680,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "3.11.10"
-content-hash = "906c8fee13ddb232bcb7833d1b84c1382d4ef7b59c552975d15d509d162b737a"
+content-hash = "8ab820faf77c846d80b0c092c9f60ae0a2128c9478e2f354fb5c4a40fdeb315d"

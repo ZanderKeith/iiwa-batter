@@ -30,7 +30,7 @@ def feet_to_meters(feet):
     return feet * 0.3048
 
 
-PLATE_OFFSET_Y = 1.2
+PLATE_OFFSET_Y = 1
 PITCH_START_X = feet_to_meters(60.5)  # Pitcher's mound is 60.5 feet from home plate
 PITCH_START_Z = feet_to_meters(5.9)
 PITCH_START_POSITION = np.array([PITCH_START_X, 0, PITCH_START_Z])

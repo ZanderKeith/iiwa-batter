@@ -8,12 +8,12 @@ def compliant_bat(
     # bat_modulus = 1.2e9 / 100
 
     # https://en.wikipedia.org/wiki/Baseball_bat
-    bat_length_inches = 42
+    bat_length_inches = 34
     bat_diameter_inches = 2.6
     bat_length = bat_length_inches * INCHES_TO_METERS
     bat_radius = bat_diameter_inches * INCHES_TO_METERS / 2
 
-    bat_mass = 1
+    bat_mass = 0.94
 
     # TODO: add inertia!
     if rigid_bat:

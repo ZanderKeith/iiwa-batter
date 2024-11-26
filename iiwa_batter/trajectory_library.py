@@ -43,7 +43,7 @@ from iiwa_batter.naive_full_trajectory_optimization import (
 NUM_PROCESSES = 8
 NUM_INITIAL_POSITIONS = 8
 MAIN_COARSE_ITERATIONS = 1000
-MAIN_FINE_ITERATIONS = 100
+MAIN_FINE_ITERATIONS = 10
 GROUP_COARSE_ITERATIONS = 200
 GROUP_FINE_ITERATIONS = 10
 
@@ -271,7 +271,7 @@ def reset(robot):
 
 if __name__ == "__main__":
     robots = ["iiwa14", "kr6r900", "slugger", "batter"]
-    #robots = ["iiwa14", "slugger"]
+    #robots = ["slugger"]
     for robot in robots:
         reset(robot)
         make_trajectory_library(robot)
