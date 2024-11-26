@@ -454,9 +454,80 @@ def test_simulation_state_preservation_no_trajectory():
     joint_velocities_deg_a = np.rad2deg(joint_velocities_a)
     joint_velocities_deg_b = np.rad2deg(joint_velocities_b)
 
-    assert np.allclose(joint_positions_deg_a, joint_positions_deg_b, atol=1e-1)
-    assert np.allclose(joint_velocities_deg_a, joint_velocities_deg_b, atol=1)
+    assert np.allclose(joint_positions_deg_a, joint_positions_deg_b)
+    assert np.allclose(joint_velocities_deg_a, joint_velocities_deg_b)
 
+def test_simulation_state_preservation():
+    # With a torque trajectory, run two sets of simulations
+    # The first one goes all the way through
+    # The second one resets but loads the state where it left off
+    # Ensure the final states are the same
+
+    torque_trajectory = {
+        0: np.ones(NUM_JOINTS)*40,
+    }
+
+    simulator, diagram = setup_simulator(torque_trajectory=torque_trajectory, model_urdf="iiwa14", dt=PITCH_DT, add_contact=False, robot_constraints=None)
+    run_swing_simulation(
+        simulator=simulator,
+        diagram=diagram,
+        start_time=0,
+        end_time=CONTROL_DT*4,
+        initial_joint_positions=np.array([0] * NUM_JOINTS),
+        initial_joint_velocities=np.array([0] * NUM_JOINTS),
+        initial_ball_position=PITCH_START_POSITION,
+        initial_ball_velocity=np.zeros(3),
+        record_state=True,
+    )
+
+    joint_positions_a, joint_velocities_a = parse_simulation_state(simulator, diagram, "iiwa")
+    ball_position_a, ball_velocity_a = parse_simulation_state(simulator, diagram, "ball")
+    end_time_a = parse_simulation_state(simulator, diagram, "time")
+
+    reset_systems(diagram)
+
+    run_swing_simulation(
+        simulator=simulator,
+        diagram=diagram,
+        start_time=0,
+        end_time=CONTROL_DT*2,
+        initial_joint_positions=np.array([0] * NUM_JOINTS),
+        initial_joint_velocities=np.array([0] * NUM_JOINTS),
+        initial_ball_position=PITCH_START_POSITION,
+        initial_ball_velocity=np.zeros(3),
+    )
+
+    joint_positions_i, joint_velocities_i = parse_simulation_state(simulator, diagram, "iiwa")
+    ball_position_i, ball_velocity_i = parse_simulation_state(simulator, diagram, "ball")
+
+    reset_systems(diagram)
+
+    run_swing_simulation(
+        simulator=simulator,
+        diagram=diagram,
+        start_time=CONTROL_DT*2,
+        end_time=CONTROL_DT*4,
+        initial_joint_positions=joint_positions_i,
+        initial_joint_velocities=joint_velocities_i,
+        initial_ball_position=ball_position_i,
+        initial_ball_velocity=ball_velocity_i,
+    )
+
+    joint_positions_b, joint_velocities_b = parse_simulation_state(simulator, diagram, "iiwa")
+    ball_position_b, ball_velocity_b = parse_simulation_state(simulator, diagram, "ball")
+    end_time_b = parse_simulation_state(simulator, diagram, "time")
+
+    assert end_time_a == end_time_b
+    assert np.allclose(ball_position_a, ball_position_b)
+    assert np.allclose(ball_velocity_a, ball_velocity_b)
+
+    joint_positions_deg_a = np.rad2deg(joint_positions_a)
+    joint_positions_deg_b = np.rad2deg(joint_positions_b)
+    joint_velocities_deg_a = np.rad2deg(joint_velocities_a)
+    joint_velocities_deg_b = np.rad2deg(joint_velocities_b)
+
+    assert np.allclose(joint_positions_deg_a, joint_positions_deg_b)
+    assert np.allclose(joint_velocities_deg_a, joint_velocities_deg_b)
 
 def test_nonzero_start_time():
     # Try running the simulator with a nonzero start time and ensure the behavior is as expected

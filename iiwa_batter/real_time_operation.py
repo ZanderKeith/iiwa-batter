@@ -34,6 +34,9 @@ from iiwa_batter.swing_optimization.stochastic_gradient_descent import (
 NUM_LOW_FIDELITY_ITERATIONS = 10
 NUM_LOW_FIDELITY_WORKERS = 1
 
+LOW_FIDELITY_LEARNING_RATE = 10
+LOW_FIDELITY_DT = PITCH_DT*10
+
 
 def measure_ball_pitch(pitch_speed_world, pitch_position_world, pitch_speed_measurement_error, pitch_position_measurement_error):
     """Measure the ball's position and speed in the world right after it's pitched.
@@ -90,7 +93,7 @@ def find_next_actions(
     ball_velocity_sample_distribution,
     start_time,
     ball_flight_time,
-    learning_rate=1,
+    learning_rate=LOW_FIDELITY_LEARNING_RATE,
 ):
     """Find the next actions to take based on the measured present state.
     
@@ -188,8 +191,9 @@ def real_time_operation(
     ball_velocity_measurement_error=0,
     ball_position_sample_distribution=0,
     ball_velocity_sample_distribution=0,
+    debug_mode=False,
 ):
-    """Real-time operation, in the sense that the CONTACT_DT is the world (taken as truth), and PITCH_DT is the low-fidelity simulation.
+    """Real-time operation, in the sense that the CONTACT_DT is the world (taken as truth), and LOW_FIDELITY_DT is the low-fidelity simulation.
     
     What we're doing is simulating reality, but planning using a low-fidelity simulation.
     """
@@ -235,7 +239,7 @@ def real_time_operation(
         simulator, diagram = setup_simulator(
             torque_trajectory={},
             model_urdf=robot,
-            dt=PITCH_DT*10,
+            dt=LOW_FIDELITY_DT,
             robot_constraints=JOINT_CONSTRAINTS[robot],
         )
         low_fidelity_simulators.append(simulator)
@@ -248,6 +252,7 @@ def real_time_operation(
     # Then while the world is going from dt to 2*dt,
     # search for the action to take at 2*dt
     taken_trajectory = {}
+    status_dict = None
     for i, control_timestep in enumerate(control_timesteps_world):
         if i == len(control_timesteps_world) - 1:
             break
@@ -260,8 +265,8 @@ def real_time_operation(
 
         # Take the action that was planned for this timestep
         taken_trajectory[control_timestep] = planned_trajectory[control_timestep]
-        reset_systems(diagram_world, taken_trajectory)
-        status_dict = run_swing_simulation(
+        reset_systems(diagram_world, planned_trajectory)
+        new_status_dict = run_swing_simulation(
             simulator=simulator_world,
             diagram=diagram_world,
             start_time=control_timestep,
@@ -271,26 +276,35 @@ def real_time_operation(
             initial_ball_position=present_ball_position,
             initial_ball_velocity=present_ball_velocity,
         )
-        if status_dict["result"] == "collision":
+        if new_status_dict["result"] == "collision":
             break
+        # Remember that the 'status_dict' is updated for each control timestep
+        if status_dict is None:
+            status_dict = new_status_dict
+        else:
+            if status_dict["closest_approach"] > new_status_dict["closest_approach"]:
+                status_dict["closest_approach"] = new_status_dict["closest_approach"]
+            if status_dict["result"] == "hit" and new_status_dict["result"] == "miss":
+                status_dict["result"] = "miss"
 
         # While that's going on, plan the next action based on the measured present state
-        planned_trajectory = find_next_actions(
-            robot=robot,
-            low_fidelity_simulators=low_fidelity_simulators,
-            low_fidelity_diagrams=low_fidelity_diagrams,
-            original_trajectory=planned_trajectory,
-            measured_joint_positions=measured_joint_positions,
-            measured_joint_velocities=measured_joint_velocities,
-            joint_position_sample_distribution=joint_position_sample_distribution,
-            joint_velocity_sample_distribution=joint_velocity_sample_distribution,
-            measured_ball_position=measured_ball_position,
-            measured_ball_velocity=measured_ball_velocity,
-            ball_position_sample_distribution=ball_position_sample_distribution,
-            ball_velocity_sample_distribution=ball_velocity_sample_distribution,
-            start_time=control_timestep,
-            ball_flight_time=ball_time_of_flight_world,
-        )
+        if not debug_mode:
+            planned_trajectory = find_next_actions(
+                robot=robot,
+                low_fidelity_simulators=low_fidelity_simulators,
+                low_fidelity_diagrams=low_fidelity_diagrams,
+                original_trajectory=planned_trajectory,
+                measured_joint_positions=measured_joint_positions,
+                measured_joint_velocities=measured_joint_velocities,
+                joint_position_sample_distribution=joint_position_sample_distribution,
+                joint_velocity_sample_distribution=joint_velocity_sample_distribution,
+                measured_ball_position=measured_ball_position,
+                measured_ball_velocity=measured_ball_velocity,
+                ball_position_sample_distribution=ball_position_sample_distribution,
+                ball_velocity_sample_distribution=ball_velocity_sample_distribution,
+                start_time=control_timestep,
+                ball_flight_time=ball_time_of_flight_world,
+            )
 
     return taken_trajectory, status_dict
 
@@ -298,11 +312,14 @@ def real_time_operation(
 if __name__ == "__main__":
     np.random.seed(0)
     robot = "iiwa14"
-    library_position_index = 0
-    real_time_operation(
+    library_position_index = 3
+    taken_trajectory, status_dict = real_time_operation(
         robot="iiwa14",
         pitch_speed_world=LIBRARY_SPEEDS_MPH[0],
         pitch_position_world=LIBRARY_POSITIONS[library_position_index],
-        pitch_speed_measurement_error=0.1,
-        pitch_position_measurement_error=0.1,
+        pitch_speed_measurement_error=0,
+        pitch_position_measurement_error=0,
+        debug_mode=False
     )
+
+    print(status_dict)

@@ -487,7 +487,7 @@ def run_swing_simulation(
     initial_ball_position,
     initial_ball_velocity,
     meshcat=None,
-    check_dt=PITCH_DT*10,
+    check_dt=PITCH_DT,
     record_state=False,
 ) -> dict:
     """Run a swing simulation from start_time to end_time with the given initial conditions.
@@ -598,8 +598,8 @@ def run_swing_simulation(
 
     if result is None:
         # Get final position of the ball
-        ball_position = plant.GetPositions(plant_context, ball)[4:]
-        if ball_position[0] > 0:
+        ball_position, ball_velocity = parse_simulation_state(simulator, diagram, "ball")
+        if ball_position[0] > -0.2:
             result = "hit"
         else:
             result = "miss"
