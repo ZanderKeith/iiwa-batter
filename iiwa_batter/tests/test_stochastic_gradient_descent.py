@@ -28,6 +28,7 @@ def test_initialize_control_vector():
         assert np.all(control_vector[:, i] <= robot_constraints["torque"][str(i+1)])
         assert np.all(control_vector[:, i] >= -robot_constraints["torque"][str(i+1)])
 
+
 def test_expand_control_vector():
     original_control_vector = np.ones((4, NUM_JOINTS))
     new_num_timesteps = 8
@@ -40,6 +41,7 @@ def test_expand_control_vector():
         assert np.all(expanded_control_vector[i] == np.zeros(NUM_JOINTS))
     for i in range(new_num_timesteps-original_control_vector.shape[0], new_num_timesteps):
         assert np.all(expanded_control_vector[i] == np.ones(NUM_JOINTS))
+
 
 def test_make_torque_trajectory():
     # Ensure that the torque trajectory is made correclty

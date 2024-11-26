@@ -1,4 +1,7 @@
 import os
+import shutil
+import time
+from multiprocessing import Pool
 
 import dill
 import numpy as np
@@ -33,6 +36,8 @@ from iiwa_batter.naive_full_trajectory_optimization import (
     run_naive_full_trajectory_optimization_hot_start,
     run_naive_full_trajectory_optimization_hot_start_torque_only,
 )
+
+NUM_PROCESSES = 8
 
 NUM_INITIAL_POSITIONS = 8
 MAIN_COARSE_ITERATIONS = 10 # TODO: Change this to 1000
@@ -95,28 +100,14 @@ class Trajectory:
 
         return status_dict["state"]
 
-
-def make_trajectory_library(robot):
-
-    main_target_speed_mph = LIBRARY_SPEEDS_MPH[0]
-    main_target_location = LIBRARY_POSITIONS[0]
-    save_directory = f"{PACKAGE_ROOT}/../trajectories/{robot}/{main_target_speed_mph}_{main_target_location}"
-
-    # 1. Find the optimal swing for the main target.
-    # This will take the form of starting from several initial positions,
-    # a coarse optimization and then a fine optimization.
-    for initial_position_index in range(NUM_INITIAL_POSITIONS):
-        # Only do the coarse optimization if it hasn't been done yet
-        optimization_name = f"coarse_{initial_position_index}"
-        if os.path.exists(f"{save_directory}/{optimization_name}.dill"):
-            continue
-        elif not os.path.exists(save_directory):
-            os.makedirs(save_directory)
-
+def main_coarse_optimization(robot, target_speed_mph, target_position, initial_position_index):
+    save_directory = f"{PACKAGE_ROOT}/../trajectories/{robot}/{target_speed_mph}_{target_position}"
+    optimization_name = f"coarse_{initial_position_index}"
+    if not os.path.exists(f"{save_directory}/{optimization_name}.dill"):
         run_naive_full_trajectory_optimization(
             robot=robot,
-            target_velocity_mph=main_target_speed_mph,
-            target_position=main_target_location,
+            target_velocity_mph=target_speed_mph,
+            target_position=target_position,
             optimization_name=optimization_name,
             save_directory=save_directory,
             simulation_dt=PITCH_DT,
@@ -125,28 +116,52 @@ def make_trajectory_library(robot):
             initial_position_index=initial_position_index,
         )
 
+    trajectory = Trajectory(robot, target_speed_mph, target_position, f"coarse_{initial_position_index}")
+    results = trajectory.load_training_results()
+
+    return results["final_best_reward"], initial_position_index
+
+
+
+def make_trajectory_library(robot):
+    start_time = time.time()
+
+    main_target_speed_mph = LIBRARY_SPEEDS_MPH[0]
+    main_target_position = LIBRARY_POSITIONS[0]
+    save_directory = f"{PACKAGE_ROOT}/../trajectories/{robot}/{main_target_speed_mph}_{main_target_position}"
+    if not os.path.exists(save_directory):
+        os.makedirs(save_directory)
+    
+    # 1. Find the optimal swing for the main target.
+    # This will take the form of starting from several initial positions,
+    # a coarse optimization and then a fine optimization.
+    main_pool = Pool(NUM_PROCESSES)
+    main_results = main_pool.starmap(main_coarse_optimization, [(robot, main_target_speed_mph, main_target_position, i) for i in range(NUM_INITIAL_POSITIONS)])
+    main_answers = []
+    for result in main_results:
+        main_answers.append(result)
+
     # Pick the best swing from the coarse optimizations
     best_index_reward = -np.inf
     best_index = None
-    for initial_position_index in range(NUM_INITIAL_POSITIONS):
-        trajectory = Trajectory(robot, main_target_speed_mph, main_target_location, f"coarse_{initial_position_index}")
-        results = trajectory.load_training_results()
-        if results["final_best_reward"] > best_index_reward:
-            best_index_reward = results["final_best_reward"]
-            best_index = initial_position_index
+    for answer in main_answers:
+        if answer[0] > best_index_reward:
+            best_index_reward = answer[0]
+            best_index = answer[1]
+        
     print(f"Best index: {best_index}")
 
     # Now do the fine optimization
     optimization_name = "fine"
     if not os.path.exists(f"{save_directory}/{optimization_name}.dill"):
-        trajectory = Trajectory(robot, main_target_speed_mph, main_target_location, f"coarse_{best_index}")
+        trajectory = Trajectory(robot, main_target_speed_mph, main_target_position, f"coarse_{best_index}")
         results = trajectory.load_training_results()
         best_initial_position = results["best_initial_position"]
         best_control_vector = results["best_control_vector"]
         run_naive_full_trajectory_optimization_hot_start(
             robot=robot,
             target_velocity_mph=main_target_speed_mph,
-            target_position=main_target_location,
+            target_position=main_target_position,
             optimization_name=optimization_name,
             save_directory=save_directory,
             present_initial_position=best_initial_position,
@@ -156,7 +171,7 @@ def make_trajectory_library(robot):
             save_interval=1,
         )
 
-    trajectory = Trajectory(robot, main_target_speed_mph, main_target_location, "fine")
+    trajectory = Trajectory(robot, main_target_speed_mph, main_target_position, "fine")
     results = trajectory.load_training_results()
     print(f"Best reward from main swing: {results['final_best_reward']}")
     best_initial_position = results["best_initial_position"]
@@ -167,7 +182,7 @@ def make_trajectory_library(robot):
     # 2. Using the best swing at the main target as an initial guess, do a coarse optimization for the rest of the targets
     for target_speed_mph in LIBRARY_SPEEDS_MPH:
         for target_position in LIBRARY_POSITIONS:
-            if target_speed_mph == main_target_speed_mph and target_position == main_target_location:
+            if target_speed_mph == main_target_speed_mph and target_position == main_target_position:
                 continue
             save_directory = f"{PACKAGE_ROOT}/../trajectories/{robot}/{target_speed_mph}_{target_position}"
             if os.path.exists(f"{save_directory}/group_coarse.dill"):
@@ -199,13 +214,11 @@ def make_trajectory_library(robot):
     # Using the best swing from the coarse optimization, do a fine optimization for the rest of the targets
     for target_speed_mph in LIBRARY_SPEEDS_MPH:
         for target_position in LIBRARY_POSITIONS:
-            if target_speed_mph == main_target_speed_mph and target_position == main_target_location:
+            if target_speed_mph == main_target_speed_mph and target_position == main_target_position:
                 continue
             save_directory = f"{PACKAGE_ROOT}/../trajectories/{robot}/{target_speed_mph}_{target_position}"
             if os.path.exists(f"{save_directory}/fine.dill"):
                 continue
-            elif not os.path.exists(save_directory):
-                os.makedirs(save_directory)
             trajectory = Trajectory(robot, target_speed_mph, target_position, "group_coarse")
             results = trajectory.load_training_results()
             best_initial_position = results["best_initial_position"]
@@ -222,7 +235,16 @@ def make_trajectory_library(robot):
                 iterations=GROUP_FINE_ITERATIONS,
             )
 
-    # And that's it!
+    print(f"Finished in {time.time() - start_time:.1f} seconds")
+
+def reset(robot):
+    robot_directory = f"{PACKAGE_ROOT}/../trajectories/{robot}"
+    try:
+        shutil.rmtree(robot_directory)
+    except FileNotFoundError:
+        pass
 
 if __name__ == "__main__":
-    make_trajectory_library("iiwa14")
+    robot = "iiwa14"
+    reset(robot)
+    make_trajectory_library(robot)
