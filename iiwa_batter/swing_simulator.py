@@ -489,6 +489,7 @@ def run_swing_simulation(
     meshcat=None,
     check_dt=PITCH_DT,
     record_state=False,
+    setup_only=False,
 ) -> dict:
     """Run a swing simulation from start_time to end_time with the given initial conditions.
 
@@ -550,6 +551,9 @@ def run_swing_simulation(
     plant.SetVelocities(
         plant_context, ball, np.concatenate([np.zeros(3), initial_ball_velocity])
     )
+
+    if setup_only:
+        return
 
     # Set up here so we don't need to re-evaluate every time
     sweet_spot = plant.GetModelInstanceByName("sweet_spot")

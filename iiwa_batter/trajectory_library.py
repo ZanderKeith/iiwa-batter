@@ -94,6 +94,13 @@ class Trajectory:
         with open(f"{self.data_directory()}/{self.type}.dill", "rb") as f:
             return dill.load(f)
         
+    def load_best_trajectory(self):
+        status_dict = self.load_training_results()
+        initial_position = status_dict["best_initial_position"]
+        control_vector = status_dict["best_control_vector"]
+        dt = status_dict["optimized_dt"]
+        return initial_position, control_vector, dt
+        
     def recover_trajectory_paths(self):
         training_results = self.load_training_results()
 
@@ -270,8 +277,8 @@ def reset(robot):
         pass
 
 if __name__ == "__main__":
-    robots = ["iiwa14", "kr6r900", "slugger", "batter"]
-    #robots = ["slugger"]
+    #robots = ["iiwa14", "kr6r900", "slugger", "batter"]
+    robots = ["iiwa14"]
     for robot in robots:
         reset(robot)
         make_trajectory_library(robot)
