@@ -90,7 +90,7 @@ def find_next_actions(
     ball_velocity_sample_distribution,
     start_time,
     ball_flight_time,
-    learning_rate=2,
+    learning_rate=1,
 ):
     """Find the next actions to take based on the measured present state.
     
@@ -111,6 +111,7 @@ def find_next_actions(
         ball_velocities.append(measured_ball_velocity + ball_velocity_noise)
     
     best_average_reward = -np.inf
+    initial_average_reward = None
     for i in range(NUM_LOW_FIDELITY_ITERATIONS):
         present_rewards = []
         present_trajectory = make_torque_trajectory(present_control_vector, ball_flight_time)
@@ -131,6 +132,8 @@ def find_next_actions(
         if present_average_reward > best_average_reward:
             best_average_reward = present_average_reward
             best_control_vector = present_control_vector
+        if initial_average_reward is None:
+            initial_average_reward = present_average_reward
 
         if i > NUM_LOW_FIDELITY_ITERATIONS - 1:
             break
@@ -162,6 +165,10 @@ def find_next_actions(
 
         present_control_vector = updated_control_vector
 
+    if best_average_reward < initial_average_reward:
+        raise ValueError("The best average reward is less than the initial average reward. This is a problem!")
+    else:
+        print(f"Timestep {start_time:.5f} improvement: {best_average_reward - initial_average_reward:.3f}")
     next_trajectory = make_torque_trajectory(best_control_vector, ball_flight_time)
 
     return next_trajectory
@@ -228,7 +235,7 @@ def real_time_operation(
         simulator, diagram = setup_simulator(
             torque_trajectory={},
             model_urdf=robot,
-            dt=PITCH_DT,
+            dt=PITCH_DT*10,
             robot_constraints=JOINT_CONSTRAINTS[robot],
         )
         low_fidelity_simulators.append(simulator)
@@ -255,14 +262,14 @@ def real_time_operation(
         taken_trajectory[control_timestep] = planned_trajectory[control_timestep]
         reset_systems(diagram_world, taken_trajectory)
         status_dict = run_swing_simulation(
-            simulator_world,
-            diagram_world,
-            control_timestep,
-            control_timesteps_world[i+1],
-            present_joint_positions,
-            present_joint_velocities,
-            present_ball_position,
-            present_ball_velocity,
+            simulator=simulator_world,
+            diagram=diagram_world,
+            start_time=control_timestep,
+            end_time=control_timesteps_world[i+1],
+            initial_joint_positions=present_joint_positions,
+            initial_joint_velocities=present_joint_velocities,
+            initial_ball_position=present_ball_position,
+            initial_ball_velocity=present_ball_velocity,
         )
         if status_dict["result"] == "collision":
             break

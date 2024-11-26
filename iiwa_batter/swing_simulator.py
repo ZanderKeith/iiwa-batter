@@ -487,7 +487,7 @@ def run_swing_simulation(
     initial_ball_position,
     initial_ball_velocity,
     meshcat=None,
-    check_dt=PITCH_DT,
+    check_dt=PITCH_DT*10,
     record_state=False,
 ) -> dict:
     """Run a swing simulation from start_time to end_time with the given initial conditions.
@@ -562,6 +562,7 @@ def run_swing_simulation(
 
     # Run the pitch
     timebase = np.arange(start_time, end_time+check_dt, check_dt)
+    timebase = timebase[timebase <= end_time] # This ensures all timesteps are less than or equal to the end time
     timebase[-1] = end_time # This forces the last timestep to be the end time
 
     if meshcat is not None:
