@@ -54,6 +54,11 @@ GROUP_FINE_ITERATIONS = 10
 # GROUP_COARSE_ITERATIONS = 2
 # GROUP_FINE_ITERATIONS = 1
 
+MAIN_COARSE_LEARNING_RATE = 1
+MAIN_FINE_LEARNING_RATE = 1
+GROUP_COARSE_LEARNING_RATE = 1
+GROUP_FINE_LEARNING_RATE = 1
+
 LIBRARY_SPEEDS_MPH = [90, 80, 70]
 
 z_top = STRIKE_ZONE_HEIGHT/2 + STRIKE_ZONE_Z
@@ -143,6 +148,7 @@ def main_coarse_optimization(robot, target_speed_mph, target_position, initial_p
             iterations=MAIN_COARSE_ITERATIONS,
             save_interval=10,
             initial_position_index=initial_position_index,
+            learning_rate=MAIN_COARSE_LEARNING_RATE,
         )
 
     trajectory = Trajectory(robot, target_speed_mph, target_position, f"coarse_{initial_position_index}")
@@ -178,6 +184,7 @@ def group_coarse_optimization(robot, target_speed_mph, target_position, best_ini
         present_control_vector=initial_control_vector,
         simulation_dt=PITCH_DT,
         iterations=GROUP_COARSE_ITERATIONS,
+        learning_rate=GROUP_COARSE_LEARNING_RATE,
     )
 
 def group_fine_optimization(robot, target_speed_mph, target_position):
@@ -200,6 +207,7 @@ def group_fine_optimization(robot, target_speed_mph, target_position):
         present_control_vector=best_control_vector,
         simulation_dt=CONTACT_DT,
         iterations=GROUP_FINE_ITERATIONS,
+        learning_rate=GROUP_FINE_LEARNING_RATE,
     )
 
 def make_trajectory_library(robot):
@@ -249,6 +257,7 @@ def make_trajectory_library(robot):
             simulation_dt=CONTACT_DT,
             iterations=MAIN_FINE_ITERATIONS,
             save_interval=1,
+            learning_rate=MAIN_FINE_LEARNING_RATE,
         )
 
     trajectory = Trajectory(robot, main_target_speed_mph, main_target_position, "fine")

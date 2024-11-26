@@ -33,6 +33,7 @@ def run_naive_full_trajectory_optimization(
     debug_prints=False,
     save_interval=10,
     initial_position_index=0,
+    learning_rate=1
 ):
 
     start_time = time.time()
@@ -61,7 +62,7 @@ def run_naive_full_trajectory_optimization(
             position_constraints_upper=position_constraints_upper,
             position_constraints_lower=position_constraints_lower,
             torque_constraints=torque_constraints,
-            learning_rate=1
+            learning_rate=learning_rate,
         )
 
         if present_reward > best_reward:
@@ -109,6 +110,7 @@ def run_naive_full_trajectory_optimization_hot_start(
     iterations=10,
     debug_prints=False,
     save_interval=1,
+    learning_rate=1
 ):
 
     start_time = time.time()
@@ -135,7 +137,7 @@ def run_naive_full_trajectory_optimization_hot_start(
             position_constraints_upper=position_constraints_upper,
             position_constraints_lower=position_constraints_lower,
             torque_constraints=torque_constraints,
-            learning_rate=0.1
+            learning_rate=learning_rate
         )
 
         if present_reward > best_reward:
@@ -183,6 +185,7 @@ def run_naive_full_trajectory_optimization_hot_start_torque_only(
     iterations=10,
     debug_prints=False,
     save_interval=1,
+    learning_rate=1
 ):
 
     start_time = time.time()
@@ -205,7 +208,7 @@ def run_naive_full_trajectory_optimization_hot_start_torque_only(
             ball_initial_velocity=ball_initial_velocity,
             ball_time_of_flight=ball_time_of_flight,
             torque_constraints=torque_constraints,
-            learning_rate=0.1
+            learning_rate=learning_rate
         )
 
         if present_reward > best_reward:
