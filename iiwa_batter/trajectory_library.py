@@ -121,7 +121,57 @@ def main_coarse_optimization(robot, target_speed_mph, target_position, initial_p
 
     return results["final_best_reward"], initial_position_index
 
+def group_coarse_optimization(robot, target_speed_mph, target_position, best_initial_position, best_control_vector):
+    if target_speed_mph == LIBRARY_SPEEDS_MPH[0] and target_position == LIBRARY_POSITIONS[0]:
+        return
+    save_directory = f"{PACKAGE_ROOT}/../trajectories/{robot}/{target_speed_mph}_{target_position}"
+    if os.path.exists(f"{save_directory}/group_coarse.dill"):
+        return
+    elif not os.path.exists(save_directory):
+        os.makedirs(save_directory)
 
+    # There's a little dosido here where the slower balls need a longer trajectory
+    # In this case, we expand the control vector to start with zeros, since the robot can afford to wait to initiate the swing
+    _, ball_time_of_flight = find_ball_initial_velocity(target_speed_mph, target_position)
+    trajectory_timesteps = np.arange(0, ball_time_of_flight+CONTROL_DT, CONTROL_DT)
+    if trajectory_timesteps.size > best_control_vector.shape[0]:
+        initial_control_vector = expand_control_vector(best_control_vector, len(trajectory_timesteps))
+    else:
+        initial_control_vector = best_control_vector
+
+    run_naive_full_trajectory_optimization_hot_start_torque_only(
+        robot=robot,
+        target_velocity_mph=target_speed_mph,
+        target_position=target_position,
+        optimization_name="group_coarse",
+        save_directory=save_directory,
+        initial_joint_positions=best_initial_position,
+        present_control_vector=initial_control_vector,
+        simulation_dt=PITCH_DT,
+        iterations=GROUP_COARSE_ITERATIONS,
+    )
+
+def group_fine_optimization(robot, target_speed_mph, target_position):
+    if target_speed_mph == LIBRARY_SPEEDS_MPH[0] and target_position == LIBRARY_POSITIONS[0]:
+        return
+    save_directory = f"{PACKAGE_ROOT}/../trajectories/{robot}/{target_speed_mph}_{target_position}"
+    if os.path.exists(f"{save_directory}/fine.dill"):
+        return
+    trajectory = Trajectory(robot, target_speed_mph, target_position, "group_coarse")
+    results = trajectory.load_training_results()
+    best_initial_position = results["best_initial_position"]
+    best_control_vector = results["best_control_vector"]
+    run_naive_full_trajectory_optimization_hot_start_torque_only(
+        robot=robot,
+        target_velocity_mph=target_speed_mph,
+        target_position=target_position,
+        optimization_name="fine",
+        save_directory=save_directory,
+        initial_joint_positions=best_initial_position,
+        present_control_vector=best_control_vector,
+        simulation_dt=CONTACT_DT,
+        iterations=GROUP_FINE_ITERATIONS,
+    )
 
 def make_trajectory_library(robot):
     start_time = time.time()
@@ -140,6 +190,7 @@ def make_trajectory_library(robot):
     main_answers = []
     for result in main_results:
         main_answers.append(result)
+    main_pool.close()
 
     # Pick the best swing from the coarse optimizations
     best_index_reward = -np.inf
@@ -180,60 +231,14 @@ def make_trajectory_library(robot):
     # TODO: Add plots of the training progress.
 
     # 2. Using the best swing at the main target as an initial guess, do a coarse optimization for the rest of the targets
-    for target_speed_mph in LIBRARY_SPEEDS_MPH:
-        for target_position in LIBRARY_POSITIONS:
-            if target_speed_mph == main_target_speed_mph and target_position == main_target_position:
-                continue
-            save_directory = f"{PACKAGE_ROOT}/../trajectories/{robot}/{target_speed_mph}_{target_position}"
-            if os.path.exists(f"{save_directory}/group_coarse.dill"):
-                continue
-            elif not os.path.exists(save_directory):
-                os.makedirs(save_directory)
-
-            # There's a little dosido here where the slower balls need a longer trajectory
-            # In this case, we expand the control vector to start with zeros, since the robot can afford to wait to initiate the swing
-            _, ball_time_of_flight = find_ball_initial_velocity(target_speed_mph, target_position)
-            trajectory_timesteps = np.arange(0, ball_time_of_flight+CONTROL_DT, CONTROL_DT)
-            if trajectory_timesteps.size > best_control_vector.shape[0]:
-                initial_control_vector = expand_control_vector(best_control_vector, len(trajectory_timesteps))
-            else:
-                initial_control_vector = best_control_vector
-
-            run_naive_full_trajectory_optimization_hot_start_torque_only(
-                robot=robot,
-                target_velocity_mph=target_speed_mph,
-                target_position=target_position,
-                optimization_name="group_coarse",
-                save_directory=save_directory,
-                initial_joint_positions=best_initial_position,
-                present_control_vector=initial_control_vector,
-                simulation_dt=PITCH_DT,
-                iterations=GROUP_COARSE_ITERATIONS,
-            )
+    group_coarse_pool = Pool(NUM_PROCESSES)
+    group_coarse_pool.starmap(group_coarse_optimization, [(robot, target_speed_mph, target_position, best_initial_position, best_control_vector) for target_speed_mph in LIBRARY_SPEEDS_MPH for target_position in LIBRARY_POSITIONS])
+    group_coarse_pool.close()
 
     # Using the best swing from the coarse optimization, do a fine optimization for the rest of the targets
-    for target_speed_mph in LIBRARY_SPEEDS_MPH:
-        for target_position in LIBRARY_POSITIONS:
-            if target_speed_mph == main_target_speed_mph and target_position == main_target_position:
-                continue
-            save_directory = f"{PACKAGE_ROOT}/../trajectories/{robot}/{target_speed_mph}_{target_position}"
-            if os.path.exists(f"{save_directory}/fine.dill"):
-                continue
-            trajectory = Trajectory(robot, target_speed_mph, target_position, "group_coarse")
-            results = trajectory.load_training_results()
-            best_initial_position = results["best_initial_position"]
-            best_control_vector = results["best_control_vector"]
-            run_naive_full_trajectory_optimization_hot_start_torque_only(
-                robot=robot,
-                target_velocity_mph=target_speed_mph,
-                target_position=target_position,
-                optimization_name="fine",
-                save_directory=save_directory,
-                initial_joint_positions=best_initial_position,
-                present_control_vector=best_control_vector,
-                simulation_dt=CONTACT_DT,
-                iterations=GROUP_FINE_ITERATIONS,
-            )
+    group_fine_pool = Pool(NUM_PROCESSES)
+    group_fine_pool.starmap(group_fine_optimization, [(robot, target_speed_mph, target_position) for target_speed_mph in LIBRARY_SPEEDS_MPH for target_position in LIBRARY_POSITIONS])
+    group_fine_pool.close()
 
     print(f"Finished in {time.time() - start_time:.1f} seconds")
 
