@@ -35,6 +35,8 @@ PITCH_START_X = feet_to_meters(60.5)  # Pitcher's mound is 60.5 feet from home p
 PITCH_START_Z = feet_to_meters(5.9)
 PITCH_START_POSITION = np.array([PITCH_START_X, 0, PITCH_START_Z])
 STRIKE_ZONE_Z = 0.6
+STRIKE_ZONE_HEIGHT = 0.5
+STRIKE_ZONE_WIDTH = 17 * INCHES_TO_METERS
 
 
 def meters_to_feet(meters):

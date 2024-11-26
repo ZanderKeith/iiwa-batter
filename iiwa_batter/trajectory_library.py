@@ -17,6 +17,9 @@ from iiwa_batter import (
 from iiwa_batter.physics import (
     PITCH_START_POSITION,
     FLIGHT_TIME_MULTIPLE,
+    STRIKE_ZONE_Z,
+    STRIKE_ZONE_WIDTH,
+    STRIKE_ZONE_HEIGHT,
     find_ball_initial_velocity,
 )
 
@@ -37,23 +40,36 @@ from iiwa_batter.naive_full_trajectory_optimization import (
     run_naive_full_trajectory_optimization_hot_start_torque_only,
 )
 
-# NUM_PROCESSES = 8
-# NUM_INITIAL_POSITIONS = 8
-# MAIN_COARSE_ITERATIONS = 1000 # TODO: Change this to 1000
-# MAIN_FINE_ITERATIONS = 100
-# GROUP_COARSE_ITERATIONS = 200
-# GROUP_FINE_ITERATIONS = 10
+NUM_PROCESSES = 8
+NUM_INITIAL_POSITIONS = 8
+MAIN_COARSE_ITERATIONS = 1000 # TODO: Change this to 1000
+MAIN_FINE_ITERATIONS = 100
+GROUP_COARSE_ITERATIONS = 200
+GROUP_FINE_ITERATIONS = 10
 
-NUM_PROCESSES = 2
-NUM_INITIAL_POSITIONS = 2
-MAIN_COARSE_ITERATIONS = 2
-MAIN_FINE_ITERATIONS = 1
-GROUP_COARSE_ITERATIONS = 2
-GROUP_FINE_ITERATIONS = 1
+# NUM_PROCESSES = 2
+# NUM_INITIAL_POSITIONS = 2
+# MAIN_COARSE_ITERATIONS = 2
+# MAIN_FINE_ITERATIONS = 1
+# GROUP_COARSE_ITERATIONS = 2
+# GROUP_FINE_ITERATIONS = 1
 
 LIBRARY_SPEEDS_MPH = [90, 80, 70]
+
+z_top = STRIKE_ZONE_HEIGHT/2 + STRIKE_ZONE_Z
+z_bot = STRIKE_ZONE_Z - STRIKE_ZONE_HEIGHT/2
+y_left = -STRIKE_ZONE_WIDTH/2
+y_right = STRIKE_ZONE_WIDTH/2
 LIBRARY_POSITIONS = [
-    [0, 0, 0.6],
+    [0, 0, STRIKE_ZONE_Z],
+    [0, y_left, z_top],
+    [0, y_right, z_top],
+    [0, y_left, z_bot],
+    [0, y_right, z_bot],
+    [0, 0, z_top],
+    [0, 0, z_bot],
+    [0, y_left, STRIKE_ZONE_Z],
+    [0, y_right, STRIKE_ZONE_Z],
 ]
 
 class Trajectory:

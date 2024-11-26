@@ -1,5 +1,5 @@
 from iiwa_batter import PACKAGE_ROOT
-from iiwa_batter.physics import BALL_MASS, BALL_RADIUS, INCHES_TO_METERS
+from iiwa_batter.physics import BALL_MASS, BALL_RADIUS, INCHES_TO_METERS, STRIKE_ZONE_WIDTH, STRIKE_ZONE_HEIGHT
 
 
 def compliant_bat(
@@ -165,9 +165,9 @@ def tee():
 
 def strike_zone():
     # Strike zone is 17 inches wide
-    width = 17 * INCHES_TO_METERS
+    width = STRIKE_ZONE_WIDTH
     # Eyeballing the height for between joints of the robot
-    height = 0.5
+    height = STRIKE_ZONE_HEIGHT
 
     return f"""<?xml version="1.0"?>
     <sdf version="1.7">
