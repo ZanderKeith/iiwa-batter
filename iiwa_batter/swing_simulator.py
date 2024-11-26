@@ -140,7 +140,7 @@ directives:
     parent: bat::base
     child: sweet_spot::base
     X_PC:
-        translation: [0, 0, 0.3]
+        translation: [0, 0, 0.25]
 - add_model:
     name: ball
     file: file://{PACKAGE_ROOT}/assets/ball.sdf
