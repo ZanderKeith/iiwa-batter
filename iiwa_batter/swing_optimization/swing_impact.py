@@ -14,7 +14,6 @@ from iiwa_batter import (
     NUM_JOINTS,
 )
 from iiwa_batter.physics import (
-    ball_flight_path,
     find_ball_initial_velocity,
     PITCH_START_POSITION,
 )
@@ -58,7 +57,7 @@ def calculate_plate_time_and_ball_state(target_speed_mph, target_position, simul
     ball_position, ball_velocity = parse_simulation_state(simulator, diagram, "ball")
     return plate_time, ball_position, ball_velocity
 
-def single_instantaneous_swing_optimization(
+def single_swing_impact_optimization(
     simulator: Simulator,
     diagram: Diagram,
     plate_time,
@@ -120,7 +119,7 @@ def single_instantaneous_swing_optimization(
 
     return updated_joint_positions, updated_joint_velocities, present_reward
 
-def run_instantaneous_swing_optimization(
+def run_swing_impact_optimization(
     robot,
     optimization_name,
     save_directory,
@@ -155,7 +154,7 @@ def run_instantaneous_swing_optimization(
     training_results = {}
     best_reward = -np.inf
     for i in range(iterations):
-        next_joint_positions, next_joint_velocities, present_reward = single_instantaneous_swing_optimization(
+        next_joint_positions, next_joint_velocities, present_reward = single_swing_impact_optimization(
             simulator=simulator,
             diagram=diagram,
             plate_time=plate_time,

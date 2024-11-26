@@ -3,7 +3,7 @@ import numpy as np
 from pydrake.geometry import StartMeshcat
 
 from iiwa_batter import PACKAGE_ROOT, CONTACT_DT, NUM_JOINTS
-from iiwa_batter.swing_optimization.instantaneous_swing import run_instantaneous_swing
+from iiwa_batter.swing_optimization.swing_impact import run_instantaneous_swing
 from iiwa_batter.robot_constraints.get_joint_constraints import JOINT_CONSTRAINTS
 
 # "iiwa14" "kr6r900" "slugger"

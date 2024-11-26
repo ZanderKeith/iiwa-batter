@@ -34,7 +34,7 @@ from iiwa_batter.swing_optimization.stochastic_gradient_descent import (
     make_torque_trajectory,
     expand_control_vector,
 )
-from iiwa_batter.swing_optimization.instantaneous_swing import (
+from iiwa_batter.swing_optimization.swing_impact import (
     calculate_plate_time_and_ball_state,
     run_instantaneous_swing_optimization,
 )
