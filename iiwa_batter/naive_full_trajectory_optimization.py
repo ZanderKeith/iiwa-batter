@@ -77,8 +77,6 @@ def run_naive_full_trajectory_optimization(
             }
             training_results["best_initial_position"] = best_initial_position
             training_results["best_control_vector"] = best_control_vector
-            with open(f"{save_directory}/{optimization_name}.dill", "wb") as f:
-                dill.dump(training_results, f)
 
         if i < iterations - 1:
             present_initial_position = next_initial_position

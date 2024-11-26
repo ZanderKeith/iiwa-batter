@@ -1,94 +1,204 @@
+import time
+
+import dill
 import numpy as np
-from manipulation.station import LoadScenario, MakeHardwareStation
+
 from pydrake.all import (
-    DiagramBuilder,
+    Diagram,
     Simulator,
 )
+from iiwa_batter import (
+    PACKAGE_ROOT,
+    CONTACT_DT,
+    CONTROL_DT,
+    NUM_JOINTS,
+)
+from iiwa_batter.physics import (
+    ball_flight_path,
+    find_ball_initial_velocity,
+    PITCH_START_POSITION,
+)
+from iiwa_batter.swing_simulator import (
+    setup_simulator,
+    run_swing_simulation,
+    parse_simulation_state
+)
+from iiwa_batter.robot_constraints.get_joint_constraints import JOINT_CONSTRAINTS
+from iiwa_batter.swing_optimization.stochastic_gradient_descent import (
+    make_trajectory_timesteps,
+    find_initial_positions,
+    perturb_vector,
+    descent_step
+)
+from iiwa_batter.swing_optimization.partial_trajectory import (
+    partial_trajectory_reward
+)
 
-from iiwa_batter import CONTACT_DT
-from iiwa_batter.physics import ball_flight_path
-from iiwa_batter.sandbox.pitch_check import make_model_directive
+def swing_link_reward():
+    pass
 
+def calculate_plate_time_and_ball_state(target_speed_mph, target_position, simulation_dt=CONTACT_DT):
+    ball_initial_velocity, ball_time_of_flight = find_ball_initial_velocity(target_speed_mph, target_position)
+    control_timesteps = make_trajectory_timesteps(ball_time_of_flight)
+    # Get the timestep just before the ball crosses the plate
+    plate_time = control_timesteps[control_timesteps < ball_time_of_flight][-1]
 
-def loss_function():
-    return 0
+    # Get the position of the ball at that time
+    simulator, diagram = setup_simulator(torque_trajectory={}, model_urdf="iiwa14", dt=simulation_dt, add_contact=False)
+    run_swing_simulation(
+        simulator=simulator,
+        diagram=diagram,
+        start_time=0,
+        end_time=plate_time,
+        initial_joint_positions=np.zeros(7),
+        initial_joint_velocities=np.zeros(7),
+        initial_ball_position=PITCH_START_POSITION,
+        initial_ball_velocity=ball_initial_velocity
+    )
+    ball_position, ball_velocity = parse_simulation_state(simulator, diagram, "ball")
+    return plate_time, ball_position, ball_velocity
 
-
-def run_instantaneous_swing(
-    meshcat,
+def single_instantaneous_swing_optimization(
+    simulator: Simulator,
+    diagram: Diagram,
+    plate_time,
+    plate_ball_position,
+    plate_ball_velocity,
     plate_joint_positions,
     plate_joint_velocities,
-    plate_ball_state_arrays: tuple[np.ndarray, np.ndarray],
-    dt=CONTACT_DT,
+    position_constraints_upper,
+    position_constraints_lower,
+    velocity_constraints_upper,
+    velocity_constraints_lower,
+    learning_rate=1,
 ):
-    if meshcat is not None:
-        meshcat.Delete()
+    # Not applying any torques, just letting the bat fly at the ball for two full timesteps
+    dummy_trajectory = {0: np.zeros(NUM_JOINTS), plate_time+2*CONTROL_DT: np.zeros(NUM_JOINTS)}
 
-    builder = DiagramBuilder()
+    present_reward = partial_trajectory_reward(
+        simulator=simulator,
+        diagram=diagram,
+        start_time=plate_time,
+        initial_joint_positions=plate_joint_positions,
+        initial_joint_velocities=plate_joint_velocities,
+        initial_ball_position=plate_ball_position,
+        initial_ball_velocity=plate_ball_velocity,
+        torque_trajectory=dummy_trajectory
+    )
 
-    model_directive = make_model_directive(plate_joint_positions, dt)
+    perturbed_joint_positions = perturb_vector(plate_joint_positions, learning_rate, position_constraints_upper, position_constraints_lower)
+    perturbed_joint_velocities = perturb_vector(plate_joint_velocities, learning_rate, velocity_constraints_upper, velocity_constraints_lower)
+    perturbed_reward = partial_trajectory_reward(
+        simulator=simulator,
+        diagram=diagram,
+        start_time=plate_time,
+        initial_joint_positions=perturbed_joint_positions,
+        initial_joint_velocities=perturbed_joint_velocities,
+        initial_ball_position=plate_ball_position,
+        initial_ball_velocity=plate_ball_velocity,
+        torque_trajectory=dummy_trajectory
+    )
 
-    scenario = LoadScenario(data=model_directive)
-    station = builder.AddSystem(MakeHardwareStation(scenario, meshcat))
-    diagram = builder.Build()
-    simulator = Simulator(diagram)
-    context = simulator.get_context()
+    updated_joint_positions = descent_step(
+        plate_joint_positions,
+        perturbed_joint_positions,
+        present_reward,
+        perturbed_reward,
+        learning_rate,
+        position_constraints_upper,
+        position_constraints_lower
+    )
+    updated_joint_velocities = descent_step(
+        plate_joint_velocities,
+        perturbed_joint_velocities,
+        present_reward,
+        perturbed_reward,
+        learning_rate,
+        velocity_constraints_upper,
+        velocity_constraints_lower
+    )
 
-    # Just turn off the torque for the time being
-    station_context = station.GetMyContextFromRoot(context)
-    station.GetInputPort("iiwa.torque").FixValue(station_context, [0] * 7)
+    return updated_joint_positions, updated_joint_velocities, present_reward
 
-    simulator.AdvanceTo(0)
-    plant = station.GetSubsystemByName("plant")
-    plant_context = plant.GetMyContextFromRoot(context)
+def run_instantaneous_swing_optimization(
+    robot,
+    optimization_name,
+    save_directory,
+    plate_time,
+    plate_ball_position,
+    plate_ball_velocity,
+    velocity_cap_fraction=0.8,
+    simulation_dt=CONTACT_DT,
+    iterations=100,
+    initial_position_index=0,
+    learning_rate=1,
+    save_interval=10,
+    debug_prints=False
+):
+    start_time = time.time()
+    robot_constraints = JOINT_CONSTRAINTS[robot]
+    position_constraints_upper = np.array([joint[1] for joint in robot_constraints["joint_range"].values()])
+    position_constraints_lower = np.array([joint[0] for joint in robot_constraints["joint_range"].values()])
+    velocity_constraints_upper = np.array([joint[1] for joint in robot_constraints["joint_velocity_range"].values()])*velocity_cap_fraction
+    velocity_constraints_lower = np.array([joint[0] for joint in robot_constraints["joint_velocity_range"].values()])*velocity_cap_fraction
 
-    # Get the position of the sweet spot (ok this needs some work...)
-    # sweet_spot = plant.GetModelInstanceByName("sweet_spot")
-    # sweet_spot_position = plant.GetPositions(plant_context, sweet_spot)[4:]
-    # # If the sweet spot is too far from the ball's position when it crosses the strike zone, stop here and return cost function
-    # # I know the ball is directly over the plate at x = 0, y = 0, so we're only concerned with z
-    # ball_z = plate_ball_state_arrays[0][7]
-    # relevant_ball_position = np.array([0, 0, ball_z])
-    # distance = np.linalg.norm(relevant_ball_position - sweet_spot_position)
-    # if distance > 0.2:
-    #     print("Too far away!")
-    #     return
+    simulator, diagram = setup_simulator(torque_trajectory={}, model_urdf=robot, dt=simulation_dt, robot_constraints=robot_constraints)
+    present_joint_positions = find_initial_positions(
+        simulator, 
+        diagram, 
+        robot_constraints, 
+        initial_position_index+1,
+        bounding_box=[[-0.1, 0.4], [-0.4, 0.4], [0.1, 0.8]]
+    )[initial_position_index]
+    present_joint_velocities = np.random.uniform(velocity_constraints_lower, velocity_constraints_upper, NUM_JOINTS)
 
-    # The bat is in a position where it has a chance to hit the ball
-    # Ensure there are no self-collisions. If there are, return some metric of how bad the self-collision is
+    training_results = {}
+    best_reward = -np.inf
+    for i in range(iterations):
+        next_joint_positions, next_joint_velocities, present_reward = single_instantaneous_swing_optimization(
+            simulator=simulator,
+            diagram=diagram,
+            plate_time=plate_time,
+            plate_ball_position=plate_ball_position,
+            plate_ball_velocity=plate_ball_velocity,
+            plate_joint_positions=present_joint_positions,
+            plate_joint_velocities=present_joint_velocities,
+            position_constraints_upper=position_constraints_upper,
+            position_constraints_lower=position_constraints_lower,
+            velocity_constraints_upper=velocity_constraints_upper,
+            velocity_constraints_lower=velocity_constraints_lower,
+            learning_rate=learning_rate
+        )
 
-    # Set the the ball's position and velocity at home plate, then execute the swing
-    # We're starting at 0.45 seconds and going to 0.5 seconds
-    ball = plant.GetModelInstanceByName("ball")
-    plant.SetPositions(plant_context, ball, plate_ball_state_arrays[0])
-    plant.SetVelocities(plant_context, ball, plate_ball_state_arrays[1])
+        if present_reward > best_reward:
+            best_reward = present_reward
+            best_joint_positions = present_joint_positions
+            best_joint_velocities = present_joint_velocities
+        
+        if i % save_interval == 0:
+            training_results[i] = {
+                "present_reward": present_reward,
+                "best_reward_so_far": best_reward
+            }
+            training_results["best_joint_positions"] = best_joint_positions
+            training_results["best_joint_velocities"] = best_joint_velocities
 
-    # Set the joint velocities of the iiwa
-    iiwa = plant.GetModelInstanceByName("iiwa")
-    plant.SetVelocities(plant_context, iiwa, plate_joint_velocities)
+        if i < iterations - 1:
+            present_joint_positions = next_joint_positions
+            present_joint_velocities = next_joint_velocities
 
-    # If the ball is traveling forwards, get how far it flies.
-    if meshcat is not None:
-        meshcat.StartRecording()
+        if debug_prints:
+            print(f"Instantaneous swing {i}: present reward: {present_reward:.3f}, best reward: {best_reward:.3f}")
 
-    simulator.AdvanceTo(0.05)
+    training_results["best_joint_positions"] = best_joint_positions
+    training_results["best_joint_velocities"] = best_joint_velocities
+    training_results["final_best_reward"] = best_reward
+    training_results["optimized_dt"] = simulation_dt
 
-    if meshcat is not None:
-        meshcat.PublishRecording()
+    total_time = time.time() - start_time
+    training_results["total_time"] = total_time
+    if debug_prints:
+        print(f"Instantaneous swing {i} total time: {total_time:.3f}")
 
-    # Get ball position and velocity
-    ball_position = plant.GetPositions(plant_context, ball)[4:]
-    ball_velocity = plant.GetVelocities(plant_context, ball)[3:]
-
-    # Determine the distance the ball travels
-    path = ball_flight_path(ball_position, ball_velocity)
-    land_location = path[-1, :2]
-    distance = np.linalg.norm(land_location)  # Absolute distance from origin
-    # If the ball is traveling backwards, return a negative distance
-    if land_location[0] < 0:
-        return -distance
-    # If the ball is foul (angle > +/- 45 degrees), return half the distance
-    if np.abs(np.arctan(land_location[1] / land_location[0])) > np.pi / 4:
-        return distance / 2
-    # If the ball is fair, return the distance
-    return distance
+    with open(f"{save_directory}/{optimization_name}.dill", "wb") as f:
+        dill.dump(training_results, f)

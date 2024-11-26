@@ -8,7 +8,7 @@ from iiwa_batter.physics import PITCH_START_POSITION, FLIGHT_TIME_MULTIPLE
 
 from iiwa_batter.swing_simulator import reset_systems, run_swing_simulation, parse_simulation_state
 
-def find_initial_positions(simulator, diagram, robot_constraints, num_positions):
+def find_initial_positions(simulator, diagram, robot_constraints, num_positions, bounding_box=None):
     initial_positions = []
     while len(initial_positions) < num_positions:
         # Generate a random initial position
@@ -36,10 +36,18 @@ def find_initial_positions(simulator, diagram, robot_constraints, num_positions)
         else:
             # Make sure the sweet spot is not starting in the ground or in front of the ball
             sweet_spot_position = parse_simulation_state(simulator, diagram, "sweet_spot")
-            if sweet_spot_position[2] < 0:
-                continue
-            if sweet_spot_position[0] > 0 and sweet_spot_position[1] < 1:
-                continue
+            if bounding_box is None:
+                if sweet_spot_position[2] < 0:
+                    continue
+                if sweet_spot_position[0] > 0 and sweet_spot_position[1] < 0:
+                    continue
+            else:
+                if bounding_box["x"][0] > sweet_spot_position[0] or sweet_spot_position[0] > bounding_box["x"][1]:
+                    continue
+                if bounding_box["y"][0] > sweet_spot_position[1] or sweet_spot_position[1] > bounding_box["y"][1]:
+                    continue
+                if bounding_box["z"][0] > sweet_spot_position[2] or sweet_spot_position[2] > bounding_box["z"][1]:
+                    continue
 
         initial_positions.append(candidate_position)
 

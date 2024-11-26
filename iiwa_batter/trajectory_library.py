@@ -34,26 +34,33 @@ from iiwa_batter.swing_optimization.stochastic_gradient_descent import (
     make_torque_trajectory,
     expand_control_vector,
 )
+from iiwa_batter.swing_optimization.instantaneous_swing import (
+    calculate_plate_time_and_ball_state,
+    run_instantaneous_swing_optimization,
+)
 from iiwa_batter.naive_full_trajectory_optimization import (
     run_naive_full_trajectory_optimization,
     run_naive_full_trajectory_optimization_hot_start,
     run_naive_full_trajectory_optimization_hot_start_torque_only,
 )
 
-NUM_PROCESSES = 8
-NUM_INITIAL_POSITIONS = 8
-MAIN_COARSE_ITERATIONS = 1000
-MAIN_FINE_ITERATIONS = 10
-GROUP_COARSE_ITERATIONS = 200
-GROUP_FINE_ITERATIONS = 10
+# NUM_PROCESSES = 8
+# NUM_INITIAL_POSITIONS = 8
+# MAIN_INSTANTANEOUS_ITERATIONS = 1000
+# MAIN_COARSE_ITERATIONS = 1000
+# MAIN_FINE_ITERATIONS = 100
+# GROUP_COARSE_ITERATIONS = 1000
+# GROUP_FINE_ITERATIONS = 20
 
-# NUM_PROCESSES = 2
-# NUM_INITIAL_POSITIONS = 2
-# MAIN_COARSE_ITERATIONS = 2
-# MAIN_FINE_ITERATIONS = 1
-# GROUP_COARSE_ITERATIONS = 2
-# GROUP_FINE_ITERATIONS = 1
+NUM_PROCESSES = 1
+NUM_INITIAL_POSITIONS = 2
+MAIN_INSTANTANEOUS_ITERATIONS = 2
+MAIN_COARSE_ITERATIONS = 2
+MAIN_FINE_ITERATIONS = 1
+GROUP_COARSE_ITERATIONS = 2
+GROUP_FINE_ITERATIONS = 1
 
+MAIN_INITIAL_LEARNING_RATE = 1
 MAIN_COARSE_LEARNING_RATE = 1
 MAIN_FINE_LEARNING_RATE = 1
 GROUP_COARSE_LEARNING_RATE = 1
@@ -134,22 +141,28 @@ class Trajectory:
 
         return status_dict["state"]
 
-def main_coarse_optimization(robot, target_speed_mph, target_position, initial_position_index):
+def main_instantaneous_swing_optimization(robot, target_speed_mph, target_position, plate_time, plate_ball_position, plate_ball_velocity, plate_position_index):
+    save_directory = f"{PACKAGE_ROOT}/../trajectories/{robot}/{target_speed_mph}_{target_position}"
+    optimization_name = f"instantaneous_{plate_position_index}"
+    if not os.path.exists(f"{save_directory}/{optimization_name}.dill"):
+        run_instantaneous_swing_optimization(
+            robot=robot,
+            optimization_name=optimization_name,
+            save_directory=save_directory,
+            plate_time=plate_time,
+            plate_ball_position=plate_ball_position,
+            plate_ball_velocity=plate_ball_velocity,
+            simulation_dt=CONTACT_DT,
+            iterations=MAIN_INSTANTANEOUS_ITERATIONS,
+            initial_position_index=plate_position_index,
+            learning_rate=MAIN_INITIAL_LEARNING_RATE,
+        )
+
+def main_coarse_link_optimization(robot, target_speed_mph, target_position, initial_position_index):
     save_directory = f"{PACKAGE_ROOT}/../trajectories/{robot}/{target_speed_mph}_{target_position}"
     optimization_name = f"coarse_{initial_position_index}"
     if not os.path.exists(f"{save_directory}/{optimization_name}.dill"):
-        run_naive_full_trajectory_optimization(
-            robot=robot,
-            target_velocity_mph=target_speed_mph,
-            target_position=target_position,
-            optimization_name=optimization_name,
-            save_directory=save_directory,
-            simulation_dt=PITCH_DT,
-            iterations=MAIN_COARSE_ITERATIONS,
-            save_interval=10,
-            initial_position_index=initial_position_index,
-            learning_rate=MAIN_COARSE_LEARNING_RATE,
-        )
+        pass
 
     trajectory = Trajectory(robot, target_speed_mph, target_position, f"coarse_{initial_position_index}")
     results = trajectory.load_training_results()
@@ -220,10 +233,14 @@ def make_trajectory_library(robot):
         os.makedirs(save_directory)
     
     # 1. Find the optimal swing for the main target.
+    plate_time, plate_ball_position, plate_ball_velocity = calculate_plate_time_and_ball_state(main_target_speed_mph, main_target_position)
+    main_pool = Pool(NUM_PROCESSES)
+    main_pool.starmap(main_instantaneous_swing_optimization, [(robot, main_target_speed_mph, main_target_position, plate_time, plate_ball_position, plate_ball_velocity, i) for i in range(NUM_INITIAL_POSITIONS)])
+
+    # 2. Using the best instantaneous swing, 
     # This will take the form of starting from several initial positions,
     # a coarse optimization and then a fine optimization.
-    main_pool = Pool(NUM_PROCESSES)
-    main_results = main_pool.starmap(main_coarse_optimization, [(robot, main_target_speed_mph, main_target_position, i) for i in range(NUM_INITIAL_POSITIONS)])
+    main_results = main_pool.starmap(main_coarse_link_optimization, [(robot, main_target_speed_mph, main_target_position, i) for i in range(NUM_INITIAL_POSITIONS)])
     main_answers = []
     for result in main_results:
         main_answers.append(result)
@@ -267,14 +284,12 @@ def make_trajectory_library(robot):
     best_control_vector = results["best_control_vector"]
 
     # 2. Using the best swing at the main target as an initial guess, do a coarse optimization for the rest of the targets
-    group_coarse_pool = Pool(NUM_PROCESSES)
-    group_coarse_pool.starmap(group_coarse_optimization, [(robot, target_speed_mph, target_position, best_initial_position, best_control_vector) for target_speed_mph in LIBRARY_SPEEDS_MPH for target_position in LIBRARY_POSITIONS])
-    group_coarse_pool.close()
+    group_pool = Pool(NUM_PROCESSES)
+    group_pool.starmap(group_coarse_optimization, [(robot, target_speed_mph, target_position, best_initial_position, best_control_vector) for target_speed_mph in LIBRARY_SPEEDS_MPH for target_position in LIBRARY_POSITIONS])
 
     # Using the best swing from the coarse optimization, do a fine optimization for the rest of the targets
-    group_fine_pool = Pool(NUM_PROCESSES)
-    group_fine_pool.starmap(group_fine_optimization, [(robot, target_speed_mph, target_position) for target_speed_mph in LIBRARY_SPEEDS_MPH for target_position in LIBRARY_POSITIONS])
-    group_fine_pool.close()
+    group_pool.starmap(group_fine_optimization, [(robot, target_speed_mph, target_position) for target_speed_mph in LIBRARY_SPEEDS_MPH for target_position in LIBRARY_POSITIONS])
+    group_pool.close()
 
     print(f"Finished in {time.time() - start_time:.1f} seconds")
 
@@ -289,5 +304,5 @@ if __name__ == "__main__":
     #robots = ["iiwa14", "kr6r900", "slugger", "batter"]
     robots = ["iiwa14"]
     for robot in robots:
-        #reset(robot)
+        reset(robot)
         make_trajectory_library(robot)
