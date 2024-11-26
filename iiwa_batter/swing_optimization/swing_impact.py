@@ -16,6 +16,7 @@ from iiwa_batter import (
 from iiwa_batter.physics import (
     find_ball_initial_velocity,
     PITCH_START_POSITION,
+    SWING_IMPACT_BOUNDING_BOX,
 )
 from iiwa_batter.swing_simulator import (
     setup_simulator,
@@ -35,6 +36,11 @@ from iiwa_batter.swing_optimization.partial_trajectory import (
 
 def swing_link_reward():
     pass
+
+def dummy_torque_trajectory(plate_time):
+    # Not applying any torques, just letting the bat fly at the ball for a few full timesteps
+    dummy_trajectory = {0: np.zeros(NUM_JOINTS), plate_time+5*CONTROL_DT: np.zeros(NUM_JOINTS)}
+    return dummy_trajectory
 
 def calculate_plate_time_and_ball_state(target_speed_mph, target_position, simulation_dt=CONTACT_DT):
     ball_initial_velocity, ball_time_of_flight = find_ball_initial_velocity(target_speed_mph, target_position)
@@ -71,8 +77,6 @@ def single_swing_impact_optimization(
     velocity_constraints_lower,
     learning_rate=1,
 ):
-    # Not applying any torques, just letting the bat fly at the ball for two full timesteps
-    dummy_trajectory = {0: np.zeros(NUM_JOINTS), plate_time+2*CONTROL_DT: np.zeros(NUM_JOINTS)}
 
     present_reward = partial_trajectory_reward(
         simulator=simulator,
@@ -82,7 +86,7 @@ def single_swing_impact_optimization(
         initial_joint_velocities=plate_joint_velocities,
         initial_ball_position=plate_ball_position,
         initial_ball_velocity=plate_ball_velocity,
-        torque_trajectory=dummy_trajectory
+        torque_trajectory=dummy_torque_trajectory(plate_time),
     )
 
     perturbed_joint_positions = perturb_vector(plate_joint_positions, learning_rate, position_constraints_upper, position_constraints_lower)
@@ -95,7 +99,7 @@ def single_swing_impact_optimization(
         initial_joint_velocities=perturbed_joint_velocities,
         initial_ball_position=plate_ball_position,
         initial_ball_velocity=plate_ball_velocity,
-        torque_trajectory=dummy_trajectory
+        torque_trajectory=dummy_torque_trajectory(plate_time),
     )
 
     updated_joint_positions = descent_step(
@@ -138,8 +142,7 @@ def run_swing_impact_optimization(
     robot_constraints = JOINT_CONSTRAINTS[robot]
     position_constraints_upper = np.array([joint[1] for joint in robot_constraints["joint_range"].values()])
     position_constraints_lower = np.array([joint[0] for joint in robot_constraints["joint_range"].values()])
-    velocity_constraints_upper = np.array([joint[1] for joint in robot_constraints["joint_velocity_range"].values()])*velocity_cap_fraction
-    velocity_constraints_lower = np.array([joint[0] for joint in robot_constraints["joint_velocity_range"].values()])*velocity_cap_fraction
+    velocity_constraints_abs = np.array([velocity for velocity in robot_constraints["joint_velocity"].values()])*velocity_cap_fraction
 
     simulator, diagram = setup_simulator(torque_trajectory={}, model_urdf=robot, dt=simulation_dt, robot_constraints=robot_constraints)
     present_joint_positions = find_initial_positions(
@@ -147,9 +150,9 @@ def run_swing_impact_optimization(
         diagram, 
         robot_constraints, 
         initial_position_index+1,
-        bounding_box=[[-0.1, 0.4], [-0.4, 0.4], [0.1, 0.8]]
+        bounding_box=SWING_IMPACT_BOUNDING_BOX
     )[initial_position_index]
-    present_joint_velocities = np.random.uniform(velocity_constraints_lower, velocity_constraints_upper, NUM_JOINTS)
+    present_joint_velocities = np.random.uniform(-velocity_constraints_abs, velocity_constraints_abs, NUM_JOINTS)
 
     training_results = {}
     best_reward = -np.inf
@@ -164,8 +167,8 @@ def run_swing_impact_optimization(
             plate_joint_velocities=present_joint_velocities,
             position_constraints_upper=position_constraints_upper,
             position_constraints_lower=position_constraints_lower,
-            velocity_constraints_upper=velocity_constraints_upper,
-            velocity_constraints_lower=velocity_constraints_lower,
+            velocity_constraints_upper=velocity_constraints_abs,
+            velocity_constraints_lower=-velocity_constraints_abs,
             learning_rate=learning_rate
         )
 
@@ -187,7 +190,7 @@ def run_swing_impact_optimization(
             present_joint_velocities = next_joint_velocities
 
         if debug_prints:
-            print(f"Instantaneous swing {i}: present reward: {present_reward:.3f}, best reward: {best_reward:.3f}")
+            print(f"Swing impact {i}: present reward: {present_reward:.3f}, best reward: {best_reward:.3f}")
 
     training_results["best_joint_positions"] = best_joint_positions
     training_results["best_joint_velocities"] = best_joint_velocities
@@ -197,7 +200,7 @@ def run_swing_impact_optimization(
     total_time = time.time() - start_time
     training_results["total_time"] = total_time
     if debug_prints:
-        print(f"Instantaneous swing {i} total time: {total_time:.3f}")
+        print(f"Swing impact {i} total time: {total_time:.3f}")
 
     with open(f"{save_directory}/{optimization_name}.dill", "wb") as f:
         dill.dump(training_results, f)

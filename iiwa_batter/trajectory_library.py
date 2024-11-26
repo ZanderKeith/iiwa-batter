@@ -36,7 +36,7 @@ from iiwa_batter.swing_optimization.stochastic_gradient_descent import (
 )
 from iiwa_batter.swing_optimization.swing_impact import (
     calculate_plate_time_and_ball_state,
-    run_instantaneous_swing_optimization,
+    run_swing_impact_optimization,
 )
 from iiwa_batter.naive_full_trajectory_optimization import (
     run_naive_full_trajectory_optimization,
@@ -45,16 +45,16 @@ from iiwa_batter.naive_full_trajectory_optimization import (
 )
 
 # NUM_PROCESSES = 8
-# NUM_INITIAL_POSITIONS = 8
-# MAIN_INSTANTANEOUS_ITERATIONS = 1000
+# NUM_INITIAL_POSITIONS = NUM_PROCESSES
+# MAIN_IMPACT_ITERATIONS = 1000
 # MAIN_COARSE_ITERATIONS = 1000
 # MAIN_FINE_ITERATIONS = 100
 # GROUP_COARSE_ITERATIONS = 1000
 # GROUP_FINE_ITERATIONS = 20
 
-NUM_PROCESSES = 1
-NUM_INITIAL_POSITIONS = 2
-MAIN_INSTANTANEOUS_ITERATIONS = 2
+NUM_PROCESSES = 2
+NUM_INITIAL_POSITIONS = NUM_PROCESSES
+MAIN_IMPACT_ITERATIONS = 30
 MAIN_COARSE_ITERATIONS = 2
 MAIN_FINE_ITERATIONS = 1
 GROUP_COARSE_ITERATIONS = 2
@@ -141,11 +141,11 @@ class Trajectory:
 
         return status_dict["state"]
 
-def main_instantaneous_swing_optimization(robot, target_speed_mph, target_position, plate_time, plate_ball_position, plate_ball_velocity, plate_position_index):
+def main_swing_impact_optimization(robot, target_speed_mph, target_position, plate_time, plate_ball_position, plate_ball_velocity, plate_position_index):
     save_directory = f"{PACKAGE_ROOT}/../trajectories/{robot}/{target_speed_mph}_{target_position}"
-    optimization_name = f"instantaneous_{plate_position_index}"
+    optimization_name = f"impact_{plate_position_index}"
     if not os.path.exists(f"{save_directory}/{optimization_name}.dill"):
-        run_instantaneous_swing_optimization(
+        run_swing_impact_optimization(
             robot=robot,
             optimization_name=optimization_name,
             save_directory=save_directory,
@@ -153,7 +153,7 @@ def main_instantaneous_swing_optimization(robot, target_speed_mph, target_positi
             plate_ball_position=plate_ball_position,
             plate_ball_velocity=plate_ball_velocity,
             simulation_dt=CONTACT_DT,
-            iterations=MAIN_INSTANTANEOUS_ITERATIONS,
+            iterations=MAIN_impact_ITERATIONS,
             initial_position_index=plate_position_index,
             learning_rate=MAIN_INITIAL_LEARNING_RATE,
         )
@@ -235,9 +235,9 @@ def make_trajectory_library(robot):
     # 1. Find the optimal swing for the main target.
     plate_time, plate_ball_position, plate_ball_velocity = calculate_plate_time_and_ball_state(main_target_speed_mph, main_target_position)
     main_pool = Pool(NUM_PROCESSES)
-    main_pool.starmap(main_instantaneous_swing_optimization, [(robot, main_target_speed_mph, main_target_position, plate_time, plate_ball_position, plate_ball_velocity, i) for i in range(NUM_INITIAL_POSITIONS)])
+    main_pool.starmap(main_swing_impact_optimization, [(robot, main_target_speed_mph, main_target_position, plate_time, plate_ball_position, plate_ball_velocity, i) for i in range(NUM_INITIAL_POSITIONS)])
 
-    # 2. Using the best instantaneous swing, 
+    # 2. Using the best swing impact, 
     # This will take the form of starting from several initial positions,
     # a coarse optimization and then a fine optimization.
     main_results = main_pool.starmap(main_coarse_link_optimization, [(robot, main_target_speed_mph, main_target_position, i) for i in range(NUM_INITIAL_POSITIONS)])
