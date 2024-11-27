@@ -21,6 +21,7 @@ from iiwa_batter.swing_optimization.swing_impact import (
     dummy_torque_trajectory,
     calculate_plate_time_and_ball_state,
     run_swing_impact_optimization,
+    calc_link_goodness,
 )
 
 def test_run_swing_impact_optimization_single():
@@ -126,3 +127,42 @@ def test_run_swing_impact_optimization_multi():
     )
 
     assert results_dict["final_best_reward"] == reward
+
+def test_calc_link_goodness():
+    # Ensure that the link goodness calculation is working as expected
+
+    # Case 1: Links are a perfect match
+    pos_a, pos_b = np.zeros(NUM_JOINTS), np.zeros(NUM_JOINTS)
+    vel_a, vel_b = np.zeros(NUM_JOINTS), np.zeros(NUM_JOINTS)
+    link_goodness = calc_link_goodness(pos_a, vel_a, pos_b, vel_b)
+    assert link_goodness == 0
+
+    # Case 2: Positions and velocities match very well
+    pos_a, pos_b = np.ones(NUM_JOINTS), np.ones(NUM_JOINTS)
+    vel_a, vel_b = np.ones(NUM_JOINTS), np.ones(NUM_JOINTS)
+    link_goodness = calc_link_goodness(pos_a, vel_a, pos_b, vel_b)
+    assert link_goodness > 0.9
+
+    # Case 3: Positions are very different, but velocities are the same
+    pos_a, pos_b = np.ones(NUM_JOINTS), -np.ones(NUM_JOINTS)
+    vel_a, vel_b = np.ones(NUM_JOINTS), np.ones(NUM_JOINTS)
+    link_goodness = calc_link_goodness(pos_a, vel_a, pos_b, vel_b)
+    assert link_goodness < 0
+
+    # Case 4: Positions are very different, but the velocities are the same and quite large
+    pos_a, pos_b = np.ones(NUM_JOINTS), -np.ones(NUM_JOINTS)
+    vel_a, vel_b = 10*np.ones(NUM_JOINTS), 10*np.ones(NUM_JOINTS)
+    link_goodness = calc_link_goodness(pos_a, vel_a, pos_b, vel_b)
+    assert link_goodness < 0
+
+    # Case 5: Positions are the same, but velocities are very different
+    pos_a, pos_b = np.ones(NUM_JOINTS), np.ones(NUM_JOINTS)
+    vel_a, vel_b = np.ones(NUM_JOINTS), -np.ones(NUM_JOINTS)
+    link_goodness = calc_link_goodness(pos_a, vel_a, pos_b, vel_b)
+    assert link_goodness < 0
+
+    # Case 6: Positions are the same, velocity direction is the same, but magnitudes are very different
+    pos_a, pos_b = np.ones(NUM_JOINTS), np.ones(NUM_JOINTS)
+    vel_a, vel_b = 10*np.ones(NUM_JOINTS), 1*np.ones(NUM_JOINTS)
+    link_goodness = calc_link_goodness(pos_a, vel_a, pos_b, vel_b)
+    assert link_goodness > -2

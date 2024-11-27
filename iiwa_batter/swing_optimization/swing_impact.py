@@ -37,6 +37,16 @@ from iiwa_batter.plotting import plot_learning
 
 VELOCITY_CAP_FRACTION = 0.8
 
+def calc_link_goodness(plate_joint_positions, plate_joint_velocities, final_joint_positions, final_joint_velocities):
+    position_difference = np.linalg.norm(final_joint_positions - plate_joint_positions)
+    direction_agreement = np.dot(final_joint_velocities, plate_joint_velocities) / (np.linalg.norm(final_joint_velocities) * np.linalg.norm(plate_joint_velocities))
+    if np.isnan(direction_agreement):
+        direction_agreement = 0
+    velocity_difference = np.linalg.norm(final_joint_velocities - plate_joint_velocities)
+
+    # Mostly want to get the position and direction right, velocity is icing on the cake
+    return (-2*position_difference) + (1*direction_agreement) + (-0.1*velocity_difference)
+
 def swing_link_reward(
     simulator: Simulator,
     diagram: Diagram,
@@ -71,11 +81,7 @@ def swing_link_reward(
 
     final_joint_positions, final_joint_velocities = parse_simulation_state(simulator, diagram, "iiwa")
 
-    position_difference = np.linalg.norm(final_joint_positions - plate_joint_positions)
-    direction_difference = np.dot(final_joint_positions, plate_joint_positions) / (np.linalg.norm(final_joint_positions) * np.linalg.norm(plate_joint_positions))
-    velocity_difference = np.linalg.norm(final_joint_velocities - plate_joint_velocities)
-
-    return (-1*position_difference) + (-100*direction_difference) + (-1*velocity_difference)
+    return calc_link_goodness(plate_joint_positions, plate_joint_velocities, final_joint_positions, final_joint_velocities)
 
 def dummy_torque_trajectory(plate_time):
     # Not applying any torques, just letting the bat fly at the ball for a few full timesteps
