@@ -129,8 +129,8 @@ def single_swing_impact_optimization(
         torque_trajectory=dummy_torque_trajectory(plate_time),
     )
 
-    perturbed_joint_positions = perturb_vector(plate_joint_positions, learning_rate, position_constraints_upper, position_constraints_lower)
-    perturbed_joint_velocities = perturb_vector(plate_joint_velocities, learning_rate, velocity_constraints_upper, velocity_constraints_lower)
+    perturbed_joint_positions = perturb_vector(plate_joint_positions, np.deg2rad(1), position_constraints_upper, position_constraints_lower)
+    perturbed_joint_velocities = perturb_vector(plate_joint_velocities, np.deg2rad(1), velocity_constraints_upper, velocity_constraints_lower)
     perturbed_reward = partial_trajectory_reward(
         simulator=simulator,
         diagram=diagram,
@@ -267,8 +267,8 @@ def single_swing_link_optimization(
         ball_time_of_flight
     )
 
-    perturbed_initial_position = perturb_vector(present_initial_position, learning_rate, position_constraints_upper, position_constraints_lower)
-    perturbed_control_vector = perturb_vector(present_control_vector, learning_rate, torque_constraints, -torque_constraints)
+    perturbed_initial_position = perturb_vector(present_initial_position, np.deg2rad(1), position_constraints_upper, position_constraints_lower)
+    perturbed_control_vector = perturb_vector(present_control_vector, 1, torque_constraints, -torque_constraints)
     perturbed_reward = swing_link_reward(
         simulator,
         diagram,

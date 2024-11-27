@@ -116,6 +116,11 @@ def descent_step(original_vector, perturbed_vector, original_reward, perturbed_r
     
     TODO: I realize that this should be called 'ascent step', because it maximizes reward. Refactor that, eventually.
     """
-    desired_vector = original_vector + learning_rate * (perturbed_reward - original_reward) * (perturbed_vector - original_vector)
+    # Our vectors are in the form of degrees, degrees/second, and torques. # WARNING! THIS HARD-CODED WHENEVER perturb_vector IS CALLED
+    # If the change in reward is too large on a particular step, that will throw the vector off completely.
+    # So, clip the change in reward to a reasonable amount.
+    effective_reward_difference = np.clip(perturbed_reward - original_reward, -1, 1)
+
+    desired_vector = original_vector + learning_rate * effective_reward_difference * (perturbed_vector - original_vector)
     clipped_vector = np.clip(desired_vector, lower_limits, upper_limits)
     return clipped_vector
