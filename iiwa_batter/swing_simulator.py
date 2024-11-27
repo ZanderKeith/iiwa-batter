@@ -142,6 +142,14 @@ directives:
     X_PC:
         translation: [0, 0, 0.25]
 - add_model:
+    name: handle
+    file: file://{PACKAGE_ROOT}/assets/handle.sdf
+- add_weld:
+    parent: bat::base
+    child: handle::base
+    X_PC:
+        translation: [0, 0, -0.3]
+- add_model:
     name: ball
     file: file://{PACKAGE_ROOT}/assets/ball.sdf
     default_free_body_pose:
@@ -470,6 +478,13 @@ def parse_simulation_state(simulator: Simulator, diagram: Diagram, system_name: 
         sweet_spot_position = sweet_spot_pose.translation()
         # Idk how to get the velocity of a welded object, but we don't need it for now
         return sweet_spot_position
+    elif system_name == "handle":
+        handle = plant.GetModelInstanceByName("handle")
+        handle_body = plant.GetRigidBodyByName("base", handle)
+        handle_pose = plant.EvalBodyPoseInWorld(plant_context, handle_body)
+        handle_position = handle_pose.translation()
+        # Idk how to get the velocity of a welded object, but we don't need it for now
+        return handle_position
     elif system_name == "time":
         return simulator_context.get_time()
     elif system_name == "iiwa_actuation":

@@ -62,13 +62,13 @@ def plot_learning(results_dict, save_dir):
 
     fig.savefig(save_dir, facecolor=BACKGROUND_COLOR)
 
-robot = "iiwa14"
-target_velocity_mph = 90
-target_position = [0, 0, 0.6]
-optimization_name = "impact_3"
-save_directory = f"{PACKAGE_ROOT}/../trajectories/{robot}/{target_velocity_mph}_{target_position}"
+# robot = "iiwa14"
+# target_velocity_mph = 90
+# target_position = [0, 0, 0.6]
+# optimization_name = "impact_3"
+# save_directory = f"{PACKAGE_ROOT}/../trajectories/{robot}/{target_velocity_mph}_{target_position}"
 
-with open(f"{save_directory}/{optimization_name}.dill", "rb") as f:
-    results_dict = dill.load(f)
+# with open(f"{save_directory}/{optimization_name}.dill", "rb") as f:
+#     results_dict = dill.load(f)
 
-plot_learning(results_dict, f"{save_directory}/learning_{optimization_name}.png")
+# plot_learning(results_dict, f"{save_directory}/learning_{optimization_name}.png")

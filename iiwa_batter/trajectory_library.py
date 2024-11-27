@@ -20,6 +20,7 @@ from iiwa_batter.physics import (
     STRIKE_ZONE_Z,
     STRIKE_ZONE_WIDTH,
     STRIKE_ZONE_HEIGHT,
+    SWING_IMPACT_BOUNDING_BOX,
     find_ball_initial_velocity,
 )
 
@@ -33,10 +34,12 @@ from iiwa_batter.robot_constraints.get_joint_constraints import JOINT_CONSTRAINT
 from iiwa_batter.swing_optimization.stochastic_gradient_descent import (
     make_torque_trajectory,
     expand_control_vector,
+    find_initial_positions,
 )
 from iiwa_batter.swing_optimization.swing_impact import (
     calculate_plate_time_and_ball_state,
     run_swing_impact_optimization,
+    VELOCITY_CAP_FRACTION
 )
 from iiwa_batter.naive_full_trajectory_optimization import (
     run_naive_full_trajectory_optimization,
@@ -44,8 +47,12 @@ from iiwa_batter.naive_full_trajectory_optimization import (
     run_naive_full_trajectory_optimization_hot_start_torque_only,
 )
 
+from iiwa_batter.swing_optimization.graduate_student_descent import (
+    SWING_IMPACT
+)
+
 # NUM_PROCESSES = 8
-# NUM_INITIAL_POSITIONS = NUM_PROCESSES
+# NUM_INITIAL_POSITIONS = 2*NUM_PROCESSES
 # MAIN_IMPACT_ITERATIONS = 1000
 # MAIN_COARSE_ITERATIONS = 1000
 # MAIN_FINE_ITERATIONS = 100
@@ -54,7 +61,7 @@ from iiwa_batter.naive_full_trajectory_optimization import (
 
 NUM_PROCESSES = 4
 NUM_INITIAL_POSITIONS = NUM_PROCESSES
-MAIN_IMPACT_ITERATIONS = 100
+MAIN_IMPACT_ITERATIONS = 10
 MAIN_COARSE_ITERATIONS = 2
 MAIN_FINE_ITERATIONS = 1
 GROUP_COARSE_ITERATIONS = 2
@@ -141,7 +148,7 @@ class Trajectory:
 
         return status_dict["state"]
 
-def main_swing_impact_optimization(robot, target_speed_mph, target_position, plate_time, plate_ball_position, plate_ball_velocity, plate_position_index):
+def main_swing_impact_optimization(robot, target_speed_mph, target_position, plate_time, plate_ball_position, plate_ball_velocity, plate_joint_position, plate_joint_velocity, plate_position_index):
     save_directory = f"{PACKAGE_ROOT}/../trajectories/{robot}/{target_speed_mph}_{target_position}"
     optimization_name = f"impact_{plate_position_index}"
     if not os.path.exists(f"{save_directory}/{optimization_name}.dill"):
@@ -152,10 +159,11 @@ def main_swing_impact_optimization(robot, target_speed_mph, target_position, pla
             plate_time=plate_time,
             plate_ball_position=plate_ball_position,
             plate_ball_velocity=plate_ball_velocity,
+            present_joint_positions=plate_joint_position[plate_position_index],
+            present_joint_velocities=plate_joint_velocity[plate_position_index],
+            learning_rate=MAIN_INITIAL_LEARNING_RATE,
             simulation_dt=CONTACT_DT,
             iterations=MAIN_IMPACT_ITERATIONS,
-            initial_position_index=plate_position_index,
-            learning_rate=MAIN_INITIAL_LEARNING_RATE,
         )
 
 def main_coarse_link_optimization(robot, target_speed_mph, target_position, initial_position_index):
@@ -235,7 +243,13 @@ def make_trajectory_library(robot):
     # 1. Find the optimal swing for the main target.
     plate_time, plate_ball_position, plate_ball_velocity = calculate_plate_time_and_ball_state(main_target_speed_mph, main_target_position)
     main_pool = Pool(NUM_PROCESSES)
-    main_pool.starmap(main_swing_impact_optimization, [(robot, main_target_speed_mph, main_target_position, plate_time, plate_ball_position, plate_ball_velocity, i) for i in range(NUM_INITIAL_POSITIONS)])
+    generated_plate_positions = find_initial_positions(robot, NUM_PROCESSES-1, bounding_box=SWING_IMPACT_BOUNDING_BOX)
+    searched_plate_positions = [SWING_IMPACT[robot]["plate_position"]] + generated_plate_positions
+    robot_constraints = JOINT_CONSTRAINTS[robot]
+    velocity_constraints_abs = np.array([velocity for velocity in robot_constraints["joint_velocity"].values()])*VELOCITY_CAP_FRACTION
+    generated_plate_velocities = [np.random.uniform(-velocity_constraints_abs, velocity_constraints_abs, NUM_JOINTS) for process in range(NUM_PROCESSES-1)]
+    searched_plate_velocities = [SWING_IMPACT[robot]["plate_velocity"]] + generated_plate_velocities
+    main_pool.starmap(main_swing_impact_optimization, [(robot, main_target_speed_mph, main_target_position, plate_time, plate_ball_position, plate_ball_velocity, searched_plate_positions, searched_plate_velocities, i) for i in range(NUM_INITIAL_POSITIONS)])
 
     # 2. Using the best swing impact, 
     # This will take the form of starting from several initial positions,

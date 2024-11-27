@@ -219,6 +219,35 @@ def sweet_spot():
     </sdf>
     """
 
+def handle():
+    return """<?xml version="1.0"?>
+    <sdf version="1.7">
+      <model name="handle">
+        <pose>0 0 0 0 0 0</pose>
+        <link name="base">
+          <inertial>
+            <mass>0.0</mass>
+              <inertia>
+                  <ixx>0.0</ixx> <ixy>0.0</ixy> <ixz>0.0</ixz>
+                  <iyy>0.0</iyy> <iyz>0.0</iyz>
+                  <izz>0.0</izz>
+              </inertia>
+            </inertial>
+          <visual name="visual">
+            <geometry>
+              <sphere>
+                <radius>0.05</radius>
+              </sphere>
+            </geometry>
+            <material>
+              <diffuse>1.0 1.0 1.0 0.5</diffuse>
+            </material>
+          </visual>
+        </link>
+      </model>
+    </sdf>
+    """
+
 
 def collision_cylinder(
     radius, length, modulus, mu_dynamic, hunt_crossley_dissipation, mesh_resolution
@@ -309,6 +338,9 @@ def write_assets(
 
     with open(f"{PACKAGE_ROOT}/assets/sweet_spot.sdf", "w+") as f:
         f.write(sweet_spot())
+
+    with open(f"{PACKAGE_ROOT}/assets/handle.sdf", "w+") as f:
+        f.write(handle())
 
     # This counts from 0, I don't care about collision of the end effector with anything since it's already super close to the bat
     link_radii = [0.1, 0.1, 0.08, 0.08, 0.08, 0.08, 0.07]

@@ -6,9 +6,19 @@ from iiwa_batter import (
 )
 from iiwa_batter.physics import PITCH_START_POSITION, FLIGHT_TIME_MULTIPLE
 
-from iiwa_batter.swing_simulator import reset_systems, run_swing_simulation, parse_simulation_state
+from iiwa_batter.swing_simulator import (
+    setup_simulator,
+    reset_systems,
+    run_swing_simulation, 
+    parse_simulation_state
+)
+from iiwa_batter.robot_constraints.get_joint_constraints import JOINT_CONSTRAINTS
 
-def find_initial_positions(simulator, diagram, robot_constraints, num_positions, bounding_box=None):
+def find_initial_positions(robot, num_positions, bounding_box=None):
+    np.random.seed(0)
+    
+    robot_constraints = JOINT_CONSTRAINTS[robot]
+    simulator, diagram = setup_simulator(torque_trajectory={}, model_urdf=robot, robot_constraints=robot_constraints)
     initial_positions = []
     while len(initial_positions) < num_positions:
         # Generate a random initial position
@@ -48,6 +58,9 @@ def find_initial_positions(simulator, diagram, robot_constraints, num_positions,
                     continue
                 if bounding_box["z"][0] > sweet_spot_position[2] or sweet_spot_position[2] > bounding_box["z"][1]:
                     continue
+            handle_position = parse_simulation_state(simulator, diagram, "handle")
+            if handle_position[0] > 0:
+                continue
 
         initial_positions.append(candidate_position)
 
@@ -99,7 +112,10 @@ def perturb_vector(original_vector, variance, upper_limits, lower_limits):
 
 
 def descent_step(original_vector, perturbed_vector, original_reward, perturbed_reward, learning_rate, upper_limits, lower_limits):
-    """Take a step in the direction of the perturbed vector, scaled by the learning rate."""
+    """Take a step in the direction of the perturbed vector, scaled by the learning rate.
+    
+    TODO: I realize that this should be called 'ascent step', because it maximizes reward. Refactor that, eventually.
+    """
     desired_vector = original_vector + learning_rate * (perturbed_reward - original_reward) * (perturbed_vector - original_vector)
     clipped_vector = np.clip(desired_vector, lower_limits, upper_limits)
     return clipped_vector
