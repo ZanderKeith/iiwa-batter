@@ -363,7 +363,7 @@ def run_swing_link_optimization(
             present_initial_position = next_initial_position
             present_control_vector = next_control_vector
 
-        print(f"Swing link {i}: present reward: {present_reward:.3f}, best reward: {best_reward:.3f}")
+        #print(f"Swing link {i}: present reward: {present_reward:.3f}, best reward: {best_reward:.3f}")
 
     training_results["best_initial_position"] = best_initial_position
     training_results["best_control_vector"] = best_control_vector

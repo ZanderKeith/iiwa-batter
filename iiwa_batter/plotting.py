@@ -37,6 +37,7 @@ def plot_joint_velocity(state_dict, robot_constraints, save_dir):
     fig.tight_layout()
 
     fig.savefig(save_dir, facecolor=BACKGROUND_COLOR)
+    plt.close(fig)
 
 # trajectory = Trajectory("iiwa14", 90, [0, 0, 0.6], "coarse_0")
 # state_dict = trajectory.recover_trajectory_paths()
@@ -61,6 +62,7 @@ def plot_learning(results_dict, save_dir):
     ax.legend(fontsize=14, loc="upper left")
 
     fig.savefig(save_dir, facecolor=BACKGROUND_COLOR)
+    plt.close(fig)
 
 # robot = "iiwa14"
 # target_velocity_mph = 90

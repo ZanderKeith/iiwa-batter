@@ -64,7 +64,7 @@ from iiwa_batter.swing_optimization.graduate_student_descent import (
 # GROUP_FINE_ITERATIONS = 20
 
 # LEARNING RATE TUNING CONSTANTS
-NUM_PROCESSES = 8
+NUM_PROCESSES = 2
 NUM_INITIAL_POSITIONS = 2*NUM_PROCESSES
 MAIN_IMPACT_ITERATIONS = 40
 COARSE_LINK_ITERATIONS = 40
@@ -109,7 +109,7 @@ LIBRARY_POSITIONS = [
 ]
 
 class Trajectory:
-    allowed_types = ["fine", "group_coarse"] + \
+    allowed_types = ["tune_coarse", "tune_fine", "group_coarse"] + \
         [f"impact_{i}" for i in range(NUM_INITIAL_POSITIONS)] + \
         [f"coarse_link_impact{i}_pos{j}" for i in range(NUM_INITIAL_POSITIONS) for j in range(NUM_INITIAL_POSITIONS)]
     
@@ -190,7 +190,6 @@ def main_swing_impact_optimization(robot, target_speed_mph, target_position, pla
 def main_coarse_link_optimization(robot, target_speed_mph, target_position, plate_time, searched_initial_position, swing_impact_index, initial_position_index):
     save_directory = f"{PACKAGE_ROOT}/../trajectories/{robot}/{target_speed_mph}_{target_position}"
     optimization_name = f"coarse_link_impact{swing_impact_index}_pos{initial_position_index}"
-    ball_time_of_flight = find_ball_initial_velocity(target_speed_mph, target_position)[1]
     if not os.path.exists(f"{save_directory}/{optimization_name}.dill"):
         if initial_position_index == 0:
             robot_constraints = JOINT_CONSTRAINTS[robot]
@@ -204,8 +203,14 @@ def main_coarse_link_optimization(robot, target_speed_mph, target_position, plat
     
         impact_trajectory = Trajectory(robot, target_speed_mph, target_position, f"impact_{swing_impact_index}")
         impact_results = impact_trajectory.load_training_results()
+
+        # We don't care about linking to bad impacts
+        if impact_results["final_best_reward"] < 0:
+            return -np.inf, swing_impact_index, initial_position_index
+        
         plate_joint_positions = impact_results["best_joint_positions"]
         plate_joint_velocities = impact_results["best_joint_velocities"]
+        ball_time_of_flight = find_ball_initial_velocity(target_speed_mph, target_position)[1]
 
         run_swing_link_optimization(
             robot=robot,
@@ -290,6 +295,7 @@ def make_trajectory_library(robot):
         os.makedirs(save_directory)
     
     # 1. Find the optimal swing for the main target.
+    print("Finding swing impact for main target")
     plate_time, plate_ball_position, plate_ball_velocity = calculate_plate_time_and_ball_state(main_target_speed_mph, main_target_position)
     main_pool = Pool(NUM_PROCESSES)
     if not os.path.exists(f"{save_directory}/impact_0.dill"):
@@ -302,6 +308,7 @@ def make_trajectory_library(robot):
         main_pool.starmap(main_swing_impact_optimization, [(robot, main_target_speed_mph, main_target_position, plate_time, plate_ball_position, plate_ball_velocity, searched_plate_positions[i], searched_plate_velocities[i], i) for i in range(NUM_INITIAL_POSITIONS)])
 
     # 2. Attempt to find a trajectory which can reach the main target
+    print("Finding trajectory to reach main target")
     generated_initial_positions = find_initial_positions(robot, NUM_INITIAL_POSITIONS-1)
     searched_initial_positions = [COARSE_LINK[robot]["initial_position"]] + generated_initial_positions
     main_results = main_pool.starmap(main_coarse_link_optimization, [(robot, main_target_speed_mph, main_target_position, plate_time, searched_initial_positions[j], i, j) for i in range(NUM_INITIAL_POSITIONS) for j in range(NUM_INITIAL_POSITIONS)])
@@ -320,7 +327,8 @@ def make_trajectory_library(robot):
             best_impact_index = answer[1]
             best_position_index = answer[2]
     print(f"Best impact index: {best_impact_index}, Best position index: {best_position_index}")
-    optimization_name = "fine"
+    print(f"Coarse tuning trajectory with reward {best_index_reward}")
+    optimization_name = "tune_coarse"
     if not os.path.exists(f"{save_directory}/{optimization_name}.dill"):
         trajectory = Trajectory(robot, main_target_speed_mph, main_target_position, f"coarse_link_impact{best_impact_index}_pos{best_position_index}")
         results = trajectory.load_training_results()
@@ -334,12 +342,36 @@ def make_trajectory_library(robot):
             save_directory=save_directory,
             present_initial_position=best_initial_position,
             present_control_vector=best_control_vector,
+            simulation_dt=PITCH_DT,
+            iterations=MAIN_COARSE_ITERATIONS,
+            learning_rate=MAIN_COARSE_LEARNING_RATE,
+        )
+    else:
+        print("Skipping coarse tuning")
+
+    optimization_name = "tune_fine"
+    if not os.path.exists(f"{save_directory}/{optimization_name}.dill"):
+        trajectory = Trajectory(robot, main_target_speed_mph, main_target_position, "tune_coarse")
+        results = trajectory.load_training_results()
+        best_initial_position = results["best_initial_position"]
+        best_control_vector = results["best_control_vector"]
+        print(f"Fine tuning trajectory with reward {best_index_reward}")
+        run_naive_full_trajectory_optimization_hot_start(
+            robot=robot,
+            target_velocity_mph=main_target_speed_mph,
+            target_position=main_target_position,
+            optimization_name=optimization_name,
+            save_directory=save_directory,
+            present_initial_position=best_initial_position,
+            present_control_vector=best_control_vector,
             simulation_dt=CONTACT_DT,
             iterations=MAIN_FINE_ITERATIONS,
             learning_rate=MAIN_FINE_LEARNING_RATE,
         )
+    else:
+        print("Skipping fine tuning")
 
-    trajectory = Trajectory(robot, main_target_speed_mph, main_target_position, "fine")
+    trajectory = Trajectory(robot, main_target_speed_mph, main_target_position, "tune_fine")
     results = trajectory.load_training_results()
     print(f"Best reward from main swing: {results['final_best_reward']}")
     best_initial_position = results["best_initial_position"]
