@@ -586,9 +586,11 @@ def run_swing_simulation(
     result = None
     state_dict = {}
     closest_approach = np.inf
+    collision_severity = 0
     for t in timebase:
         try:
             simulator.AdvanceTo(t)
+            collision_severity = collision_check_system.GetOutputPort("collision_severity").Eval(collision_check_system_context)[0]
         except EOFError:
             # Collision detected, stop the simulation
             result = "collision"
@@ -621,7 +623,7 @@ def run_swing_simulation(
 
     status_dict = {
         "result": result,
-        "contact_severity": collision_check_system.GetOutputPort("collision_severity").Eval(collision_check_system_context)[0],
+        "contact_severity": collision_severity,
         "state": state_dict,
         "closest_approach": closest_approach,
     }
