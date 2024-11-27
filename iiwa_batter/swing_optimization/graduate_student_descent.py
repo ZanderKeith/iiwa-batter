@@ -8,3 +8,10 @@ SWING_IMPACT = {
         "plate_velocity": np.array([0, 0, 0, 0, 0, 0, 0], dtype=np.float64),
     }
 }
+
+COARSE_LINK = {
+    "iiwa14": {
+        "initial_position": np.array([0, 0, 0, 0, 0, 0, 0], dtype=np.float64),
+        # Wow we're really doing this, aren't we?
+    }
+}

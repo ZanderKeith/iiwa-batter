@@ -32,6 +32,7 @@ from iiwa_batter.swing_simulator import (
 
 from iiwa_batter.robot_constraints.get_joint_constraints import JOINT_CONSTRAINTS
 from iiwa_batter.swing_optimization.stochastic_gradient_descent import (
+    initialize_control_vector,
     make_torque_trajectory,
     expand_control_vector,
     find_initial_positions,
@@ -39,6 +40,7 @@ from iiwa_batter.swing_optimization.stochastic_gradient_descent import (
 from iiwa_batter.swing_optimization.swing_impact import (
     calculate_plate_time_and_ball_state,
     run_swing_impact_optimization,
+    run_swing_link_optimization,
     VELOCITY_CAP_FRACTION
 )
 from iiwa_batter.naive_full_trajectory_optimization import (
@@ -48,7 +50,8 @@ from iiwa_batter.naive_full_trajectory_optimization import (
 )
 
 from iiwa_batter.swing_optimization.graduate_student_descent import (
-    SWING_IMPACT
+    SWING_IMPACT,
+    COARSE_LINK,
 )
 
 # NUM_PROCESSES = 8
@@ -59,15 +62,17 @@ from iiwa_batter.swing_optimization.graduate_student_descent import (
 # GROUP_COARSE_ITERATIONS = 1000
 # GROUP_FINE_ITERATIONS = 20
 
-NUM_PROCESSES = 4
+NUM_PROCESSES = 2
 NUM_INITIAL_POSITIONS = NUM_PROCESSES
-MAIN_IMPACT_ITERATIONS = 10
+MAIN_IMPACT_ITERATIONS = 2
+COARSE_LINK_ITERATIONS = 2
 MAIN_COARSE_ITERATIONS = 2
 MAIN_FINE_ITERATIONS = 1
 GROUP_COARSE_ITERATIONS = 2
 GROUP_FINE_ITERATIONS = 1
 
 MAIN_INITIAL_LEARNING_RATE = 0.1
+COARSE_LINK_LEARNING_RATE = 1
 MAIN_COARSE_LEARNING_RATE = 1
 MAIN_FINE_LEARNING_RATE = 1
 GROUP_COARSE_LEARNING_RATE = 1
@@ -92,12 +97,16 @@ LIBRARY_POSITIONS = [
 ]
 
 class Trajectory:
+    allowed_types = ["fine", "group_coarse"] + \
+        [f"impact_{i}" for i in range(NUM_INITIAL_POSITIONS)] + \
+        [f"coarse_link_impact{i}_pos{j}" for i in range(NUM_INITIAL_POSITIONS) for j in range(NUM_INITIAL_POSITIONS)]
+    
     def __init__(self, robot, target_speed_mph, target_position, type):
         self.robot = robot
         self.target_speed_mph = target_speed_mph
         self.target_position = target_position
-        if type not in ["fine", "group_coarse", "final"] and type not in [f"coarse_{i}" for i in range(NUM_INITIAL_POSITIONS)]:
-            raise ValueError("Invalid type")
+        if type not in Trajectory.allowed_types:
+            raise ValueError(f"Invalid type: {type}")
         self.type = type
 
     def data_directory(self):
@@ -159,23 +168,51 @@ def main_swing_impact_optimization(robot, target_speed_mph, target_position, pla
             plate_time=plate_time,
             plate_ball_position=plate_ball_position,
             plate_ball_velocity=plate_ball_velocity,
-            present_joint_positions=plate_joint_position[plate_position_index],
-            present_joint_velocities=plate_joint_velocity[plate_position_index],
+            present_joint_positions=plate_joint_position,
+            present_joint_velocities=plate_joint_velocity,
             learning_rate=MAIN_INITIAL_LEARNING_RATE,
             simulation_dt=CONTACT_DT,
             iterations=MAIN_IMPACT_ITERATIONS,
         )
 
-def main_coarse_link_optimization(robot, target_speed_mph, target_position, initial_position_index):
+def main_coarse_link_optimization(robot, target_speed_mph, target_position, plate_time, searched_initial_position, swing_impact_index, initial_position_index):
     save_directory = f"{PACKAGE_ROOT}/../trajectories/{robot}/{target_speed_mph}_{target_position}"
-    optimization_name = f"coarse_{initial_position_index}"
+    optimization_name = f"coarse_link_impact{swing_impact_index}_pos{initial_position_index}"
+    ball_time_of_flight = find_ball_initial_velocity(target_speed_mph, target_position)[1]
     if not os.path.exists(f"{save_directory}/{optimization_name}.dill"):
-        pass
+        if initial_position_index == 0:
+            robot_constraints = JOINT_CONSTRAINTS[robot]
+            _, ball_time_of_flight = find_ball_initial_velocity(target_speed_mph, target_position)
+            print("You haven't done human machine learning yet!")
+            searched_control_vector = initialize_control_vector(robot_constraints, ball_time_of_flight)
+        else:
+            robot_constraints = JOINT_CONSTRAINTS[robot]
+            _, ball_time_of_flight = find_ball_initial_velocity(target_speed_mph, target_position)
+            searched_control_vector = initialize_control_vector(robot_constraints, ball_time_of_flight)
+    
+        impact_trajectory = Trajectory(robot, target_speed_mph, target_position, f"impact_{swing_impact_index}")
+        impact_results = impact_trajectory.load_training_results()
+        plate_joint_positions = impact_results["best_joint_positions"]
+        plate_joint_velocities = impact_results["best_joint_velocities"]
 
-    trajectory = Trajectory(robot, target_speed_mph, target_position, f"coarse_{initial_position_index}")
+        run_swing_link_optimization(
+            robot=robot,
+            optimization_name=optimization_name,
+            save_directory=save_directory,
+            ball_time_of_flight=ball_time_of_flight,
+            plate_time=plate_time,
+            plate_joint_positions=plate_joint_positions,
+            plate_joint_velocities=plate_joint_velocities,
+            present_initial_position=searched_initial_position,
+            present_control_vector=searched_control_vector,
+            learning_rate=COARSE_LINK_LEARNING_RATE,
+            iterations=COARSE_LINK_ITERATIONS,
+        )
+
+    trajectory = Trajectory(robot, target_speed_mph, target_position, optimization_name)
     results = trajectory.load_training_results()
 
-    return results["final_best_reward"], initial_position_index
+    return results["final_best_reward"], swing_impact_index, initial_position_index
 
 def group_coarse_optimization(robot, target_speed_mph, target_position, best_initial_position, best_control_vector):
     if target_speed_mph == LIBRARY_SPEEDS_MPH[0] and target_position == LIBRARY_POSITIONS[0]:
@@ -243,37 +280,37 @@ def make_trajectory_library(robot):
     # 1. Find the optimal swing for the main target.
     plate_time, plate_ball_position, plate_ball_velocity = calculate_plate_time_and_ball_state(main_target_speed_mph, main_target_position)
     main_pool = Pool(NUM_PROCESSES)
-    generated_plate_positions = find_initial_positions(robot, NUM_PROCESSES-1, bounding_box=SWING_IMPACT_BOUNDING_BOX)
-    searched_plate_positions = [SWING_IMPACT[robot]["plate_position"]] + generated_plate_positions
-    robot_constraints = JOINT_CONSTRAINTS[robot]
-    velocity_constraints_abs = np.array([velocity for velocity in robot_constraints["joint_velocity"].values()])*VELOCITY_CAP_FRACTION
-    generated_plate_velocities = [np.random.uniform(-velocity_constraints_abs, velocity_constraints_abs, NUM_JOINTS) for process in range(NUM_PROCESSES-1)]
-    searched_plate_velocities = [SWING_IMPACT[robot]["plate_velocity"]] + generated_plate_velocities
-    main_pool.starmap(main_swing_impact_optimization, [(robot, main_target_speed_mph, main_target_position, plate_time, plate_ball_position, plate_ball_velocity, searched_plate_positions, searched_plate_velocities, i) for i in range(NUM_INITIAL_POSITIONS)])
+    if not os.path.exists(f"{save_directory}/impact_0.dill"):
+        generated_plate_positions = find_initial_positions(robot, NUM_INITIAL_POSITIONS-1, bounding_box=SWING_IMPACT_BOUNDING_BOX)
+        searched_plate_positions = [SWING_IMPACT[robot]["plate_position"]] + generated_plate_positions
+        robot_constraints = JOINT_CONSTRAINTS[robot]
+        velocity_constraints_abs = np.array([velocity for velocity in robot_constraints["joint_velocity"].values()])*VELOCITY_CAP_FRACTION
+        generated_plate_velocities = [np.random.uniform(-velocity_constraints_abs, velocity_constraints_abs, NUM_JOINTS) for position in range(NUM_INITIAL_POSITIONS-1)]
+        searched_plate_velocities = [SWING_IMPACT[robot]["plate_velocity"]] + generated_plate_velocities
+        main_pool.starmap(main_swing_impact_optimization, [(robot, main_target_speed_mph, main_target_position, plate_time, plate_ball_position, plate_ball_velocity, searched_plate_positions[i], searched_plate_velocities[i], i) for i in range(NUM_INITIAL_POSITIONS)])
 
-    # 2. Using the best swing impact, 
-    # This will take the form of starting from several initial positions,
-    # a coarse optimization and then a fine optimization.
-    main_results = main_pool.starmap(main_coarse_link_optimization, [(robot, main_target_speed_mph, main_target_position, i) for i in range(NUM_INITIAL_POSITIONS)])
+    # 2. Attempt to find a trajectory which can reach the main target
+    generated_initial_positions = find_initial_positions(robot, NUM_INITIAL_POSITIONS-1)
+    searched_initial_positions = [COARSE_LINK[robot]["initial_position"]] + generated_initial_positions
+    main_results = main_pool.starmap(main_coarse_link_optimization, [(robot, main_target_speed_mph, main_target_position, plate_time, searched_initial_positions[j], i, j) for i in range(NUM_INITIAL_POSITIONS) for j in range(NUM_INITIAL_POSITIONS)])
     main_answers = []
     for result in main_results:
         main_answers.append(result)
     main_pool.close()
 
-    # Pick the best swing from the coarse optimizations
+    # 3. Pick the best swing from the coarse optimizations and fine tune it
     best_index_reward = -np.inf
-    best_index = None
+    best_impact_index = None
+    best_position_index = None
     for answer in main_answers:
         if answer[0] > best_index_reward:
             best_index_reward = answer[0]
-            best_index = answer[1]
-        
-    print(f"Best index: {best_index}")
-
-    # Now do the fine optimization
+            best_impact_index = answer[1]
+            best_position_index = answer[2]
+    print(f"Best impact index: {best_impact_index}, Best position index: {best_position_index}")
     optimization_name = "fine"
     if not os.path.exists(f"{save_directory}/{optimization_name}.dill"):
-        trajectory = Trajectory(robot, main_target_speed_mph, main_target_position, f"coarse_{best_index}")
+        trajectory = Trajectory(robot, main_target_speed_mph, main_target_position, f"coarse_link_impact{best_impact_index}_pos{best_position_index}")
         results = trajectory.load_training_results()
         best_initial_position = results["best_initial_position"]
         best_control_vector = results["best_control_vector"]
@@ -297,11 +334,11 @@ def make_trajectory_library(robot):
     best_initial_position = results["best_initial_position"]
     best_control_vector = results["best_control_vector"]
 
-    # 2. Using the best swing at the main target as an initial guess, do a coarse optimization for the rest of the targets
+    # 4. Using the best swing at the main target as an initial guess, do a coarse optimization for the rest of the targets
     group_pool = Pool(NUM_PROCESSES)
     group_pool.starmap(group_coarse_optimization, [(robot, target_speed_mph, target_position, best_initial_position, best_control_vector) for target_speed_mph in LIBRARY_SPEEDS_MPH for target_position in LIBRARY_POSITIONS])
 
-    # Using the best swing from the coarse optimization, do a fine optimization for the rest of the targets
+    # 5. Using the best swing from the coarse optimization, do a fine optimization for the rest of the targets
     group_pool.starmap(group_fine_optimization, [(robot, target_speed_mph, target_position) for target_speed_mph in LIBRARY_SPEEDS_MPH for target_position in LIBRARY_POSITIONS])
     group_pool.close()
 
@@ -318,5 +355,5 @@ if __name__ == "__main__":
     #robots = ["iiwa14", "kr6r900", "slugger", "batter"]
     robots = ["iiwa14"]
     for robot in robots:
-        reset(robot)
+        #reset(robot)
         make_trajectory_library(robot)

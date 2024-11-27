@@ -43,6 +43,9 @@ def test_run_swing_impact_optimization_single():
         plate_time=plate_time,
         plate_ball_position=plate_ball_postion,
         plate_ball_velocity=plate_ball_velocity,
+        present_joint_positions=np.zeros(NUM_JOINTS),
+        present_joint_velocities=np.zeros(NUM_JOINTS),
+        learning_rate=1,
         iterations=1,
         debug_prints=False,
     )
@@ -92,6 +95,9 @@ def test_run_swing_impact_optimization_multi():
         plate_time=plate_time,
         plate_ball_position=plate_ball_postion,
         plate_ball_velocity=plate_ball_velocity,
+        present_joint_positions=np.zeros(NUM_JOINTS),
+        present_joint_velocities=np.zeros(NUM_JOINTS),
+        learning_rate=1,
         iterations=3,
         debug_prints=False,
     )

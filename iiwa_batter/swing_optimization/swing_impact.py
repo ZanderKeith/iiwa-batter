@@ -19,14 +19,14 @@ from iiwa_batter.physics import (
 )
 from iiwa_batter.swing_simulator import (
     setup_simulator,
+    reset_systems,
     run_swing_simulation,
     parse_simulation_state
 )
 from iiwa_batter.robot_constraints.get_joint_constraints import JOINT_CONSTRAINTS
 from iiwa_batter.swing_optimization.stochastic_gradient_descent import (
     make_trajectory_timesteps,
-    initialize_control_vector,
-    find_initial_positions,
+    make_torque_trajectory,
     perturb_vector,
     descent_step
 )
@@ -37,8 +37,45 @@ from iiwa_batter.plotting import plot_learning
 
 VELOCITY_CAP_FRACTION = 0.8
 
-def swing_link_reward():
-    pass
+def swing_link_reward(
+    simulator: Simulator,
+    diagram: Diagram,
+    plate_time,
+    plate_joint_positions,
+    plate_joint_velocities,
+    initial_joint_positions,
+    control_vector,
+    ball_time_of_flight
+):
+    torque_trajectory = make_torque_trajectory(control_vector, ball_time_of_flight)
+    reset_systems(diagram, torque_trajectory)
+
+    status_dict = run_swing_simulation(
+        simulator,
+        diagram,
+        start_time=0,
+        end_time=plate_time,
+        initial_joint_positions=initial_joint_positions,
+        initial_joint_velocities=np.zeros(NUM_JOINTS),
+        initial_ball_position=PITCH_START_POSITION,
+        initial_ball_velocity=np.zeros(3),
+    )
+
+    result = status_dict["result"]
+    if result == "collision":
+        severity = status_dict["contact_severity"]
+        if severity <= 10:
+            return (-1 * severity) - 20
+        else:
+            return (-10 * np.log10(severity)) - 20
+
+    final_joint_positions, final_joint_velocities = parse_simulation_state(simulator, diagram, "iiwa")
+
+    position_difference = np.linalg.norm(final_joint_positions - plate_joint_positions)
+    direction_difference = np.dot(final_joint_positions, plate_joint_positions) / (np.linalg.norm(final_joint_positions) * np.linalg.norm(plate_joint_positions))
+    velocity_difference = np.linalg.norm(final_joint_velocities - plate_joint_velocities)
+
+    return (-1*position_difference) + (-100*direction_difference) + (-1*velocity_difference)
 
 def dummy_torque_trajectory(plate_time):
     # Not applying any torques, just letting the bat fly at the ball for a few full timesteps
@@ -205,6 +242,7 @@ def run_swing_impact_optimization(
 def single_swing_link_optimization(
     simulator: Simulator,
     diagram: Diagram,
+    ball_time_of_flight,
     plate_time,
     plate_joint_positions,
     plate_joint_velocities,
@@ -225,7 +263,8 @@ def single_swing_link_optimization(
         plate_joint_positions,
         plate_joint_velocities,
         present_initial_position,
-        present_control_vector
+        present_control_vector,
+        ball_time_of_flight
     )
 
     perturbed_initial_position = perturb_vector(present_initial_position, learning_rate, position_constraints_upper, position_constraints_lower)
@@ -237,7 +276,8 @@ def single_swing_link_optimization(
         plate_joint_positions,
         plate_joint_velocities,
         perturbed_initial_position,
-        perturbed_control_vector
+        perturbed_control_vector,
+        ball_time_of_flight
     )
 
     updated_initial_position = descent_step(
@@ -270,11 +310,10 @@ def run_swing_link_optimization(
     plate_joint_positions,
     plate_joint_velocities,
     present_initial_position,
-    initial_position_index,
+    present_control_vector,
     learning_rate,
     simulation_dt=PITCH_DT,
     iterations=100,
-    save_interval=1,
 ):
     start_time = time.time()
     robot_constraints = JOINT_CONSTRAINTS[robot]
@@ -284,14 +323,13 @@ def run_swing_link_optimization(
 
     simulator, diagram = setup_simulator(torque_trajectory={}, model_urdf=robot, dt=simulation_dt, robot_constraints=robot_constraints)
 
-    present_control_vector = initialize_control_vector(robot_constraints, ball_time_of_flight)
-
     training_results = {"learning": {}}
     best_reward = -np.inf
     for i in range(iterations):
         next_initial_position, next_control_vector, present_reward = single_swing_link_optimization(
             simulator=simulator,
             diagram=diagram,
+            ball_time_of_flight=ball_time_of_flight,
             plate_time=plate_time,
             plate_joint_positions=plate_joint_positions,
             plate_joint_velocities=plate_joint_velocities,
@@ -308,13 +346,12 @@ def run_swing_link_optimization(
             best_initial_position = present_initial_position
             best_control_vector = present_control_vector
 
-        if i % save_interval == 0:
-            training_results["learning"][i] = {
-                "present_reward": present_reward,
-                "best_reward_so_far": best_reward
-            }
-            training_results["best_initial_position"] = best_initial_position
-            training_results["best_control_vector"] = best_control_vector
+        training_results["learning"][i] = {
+            "present_reward": present_reward,
+            "best_reward_so_far": best_reward
+        }
+        training_results["best_initial_position"] = best_initial_position
+        training_results["best_control_vector"] = best_control_vector
 
         if i < iterations - 1:
             present_initial_position = next_initial_position

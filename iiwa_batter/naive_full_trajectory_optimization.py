@@ -47,7 +47,7 @@ def run_naive_full_trajectory_optimization(
 
     simulator, diagram = setup_simulator(torque_trajectory={}, model_urdf=robot, dt=simulation_dt, robot_constraints=robot_constraints)
     ball_initial_velocity, ball_time_of_flight = find_ball_initial_velocity(target_velocity_mph, target_position)
-    present_initial_position = find_initial_positions(simulator, diagram, robot_constraints, initial_position_index+1)[initial_position_index]
+    present_initial_position = find_initial_positions(robot, initial_position_index+1)[initial_position_index]
     present_control_vector = initialize_control_vector(robot_constraints, ball_time_of_flight)
 
     training_results = {
@@ -249,4 +249,4 @@ def run_naive_full_trajectory_optimization_hot_start_torque_only(
     with open(f"{save_directory}/{optimization_name}.dill", "wb") as f:
         dill.dump(training_results, f)
 
-    plot_learning(training_results, optimization_name, save_directory)
+    plot_learning(training_results, f"{save_directory}/learning_{optimization_name}")
