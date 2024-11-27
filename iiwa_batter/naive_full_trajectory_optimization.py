@@ -32,7 +32,6 @@ def run_naive_full_trajectory_optimization(
     simulation_dt=PITCH_DT,
     iterations=100,
     debug_prints=False,
-    save_interval=1,
     initial_position_index=0,
     learning_rate=1
 ):
@@ -73,13 +72,12 @@ def run_naive_full_trajectory_optimization(
             best_initial_position = present_initial_position
             best_control_vector = present_control_vector
 
-        if i % save_interval == 0:
-            training_results["learning"][i] = {
-                "present_reward": present_reward,
-                "best_reward_so_far": best_reward,
-            }
-            training_results["best_initial_position"] = best_initial_position
-            training_results["best_control_vector"] = best_control_vector
+        training_results["learning"][i] = {
+            "present_reward": present_reward,
+            "best_reward_so_far": best_reward,
+        }
+        training_results["best_initial_position"] = best_initial_position
+        training_results["best_control_vector"] = best_control_vector
 
         if i < iterations - 1:
             present_initial_position = next_initial_position
@@ -112,7 +110,6 @@ def run_naive_full_trajectory_optimization_hot_start(
     simulation_dt=PITCH_DT,
     iterations=10,
     debug_prints=False,
-    save_interval=1,
     learning_rate=1
 ):
 
@@ -150,13 +147,12 @@ def run_naive_full_trajectory_optimization_hot_start(
             best_initial_position = present_initial_position
             best_control_vector = present_control_vector
 
-        if i % save_interval == 0:
-            training_results["learning"][i] = {
-                "present_reward": present_reward,
-                "best_reward_so_far": best_reward,
-            }
-            training_results["best_initial_position"] = best_initial_position
-            training_results["best_control_vector"] = best_control_vector
+        training_results["learning"][i] = {
+            "present_reward": present_reward,
+            "best_reward_so_far": best_reward,
+        }
+        training_results["best_initial_position"] = best_initial_position
+        training_results["best_control_vector"] = best_control_vector
 
         if i < iterations - 1:
             present_initial_position = next_initial_position
@@ -189,7 +185,6 @@ def run_naive_full_trajectory_optimization_hot_start_torque_only(
     simulation_dt=PITCH_DT,
     iterations=10,
     debug_prints=False,
-    save_interval=1,
     learning_rate=1
 ):
 
@@ -202,9 +197,7 @@ def run_naive_full_trajectory_optimization_hot_start_torque_only(
     simulator, diagram = setup_simulator(torque_trajectory={}, model_urdf=robot, dt=simulation_dt, robot_constraints=robot_constraints)
     ball_initial_velocity, ball_time_of_flight = find_ball_initial_velocity(target_velocity_mph, target_position)
 
-    training_results = {
-        "learning": {}
-    }
+    training_results = {"learning": {}}
     best_reward = -np.inf
     for i in range(iterations):
         next_control_vector, present_reward = single_full_trajectory_torque_only(
@@ -222,15 +215,12 @@ def run_naive_full_trajectory_optimization_hot_start_torque_only(
             best_reward = present_reward
             best_control_vector = present_control_vector
 
-        if i % save_interval == 0:
-            training_results["learning"][i] = {
-                "present_reward": present_reward,
-                "best_reward_so_far": best_reward,
-            }
-            training_results["best_initial_position"] = initial_joint_positions
-            training_results["best_control_vector"] = best_control_vector
-            with open(f"{save_directory}/{optimization_name}.dill", "wb") as f:
-                dill.dump(training_results, f)
+        training_results["learning"][i] = {
+            "present_reward": present_reward,
+            "best_reward_so_far": best_reward,
+        }
+        training_results["best_initial_position"] = initial_joint_positions
+        training_results["best_control_vector"] = best_control_vector
 
         if i < iterations - 1:
             present_control_vector = next_control_vector

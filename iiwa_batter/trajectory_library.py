@@ -54,6 +54,7 @@ from iiwa_batter.swing_optimization.graduate_student_descent import (
     COARSE_LINK,
 )
 
+# FINAL CONSTANTS
 # NUM_PROCESSES = 8
 # NUM_INITIAL_POSITIONS = 2*NUM_PROCESSES
 # MAIN_IMPACT_ITERATIONS = 1000
@@ -62,14 +63,24 @@ from iiwa_batter.swing_optimization.graduate_student_descent import (
 # GROUP_COARSE_ITERATIONS = 1000
 # GROUP_FINE_ITERATIONS = 20
 
-NUM_PROCESSES = 2
-NUM_INITIAL_POSITIONS = NUM_PROCESSES
-MAIN_IMPACT_ITERATIONS = 2
-COARSE_LINK_ITERATIONS = 2
-MAIN_COARSE_ITERATIONS = 2
-MAIN_FINE_ITERATIONS = 1
-GROUP_COARSE_ITERATIONS = 2
-GROUP_FINE_ITERATIONS = 1
+# LEARNING RATE TUNING CONSTANTS
+NUM_PROCESSES = 8
+NUM_INITIAL_POSITIONS = 2*NUM_PROCESSES
+MAIN_IMPACT_ITERATIONS = 40
+MAIN_COARSE_ITERATIONS = 40
+MAIN_FINE_ITERATIONS = 20
+GROUP_COARSE_ITERATIONS = 40
+GROUP_FINE_ITERATIONS = 20
+
+# TEST CONSTANTS
+# NUM_PROCESSES = 2
+# NUM_INITIAL_POSITIONS = NUM_PROCESSES
+# MAIN_IMPACT_ITERATIONS = 2
+# COARSE_LINK_ITERATIONS = 2
+# MAIN_COARSE_ITERATIONS = 2
+# MAIN_FINE_ITERATIONS = 1
+# GROUP_COARSE_ITERATIONS = 2
+# GROUP_FINE_ITERATIONS = 1
 
 MAIN_INITIAL_LEARNING_RATE = 0.1
 COARSE_LINK_LEARNING_RATE = 1
@@ -324,7 +335,6 @@ def make_trajectory_library(robot):
             present_control_vector=best_control_vector,
             simulation_dt=CONTACT_DT,
             iterations=MAIN_FINE_ITERATIONS,
-            save_interval=1,
             learning_rate=MAIN_FINE_LEARNING_RATE,
         )
 
@@ -355,5 +365,5 @@ if __name__ == "__main__":
     #robots = ["iiwa14", "kr6r900", "slugger", "batter"]
     robots = ["iiwa14"]
     for robot in robots:
-        #reset(robot)
+        reset(robot)
         make_trajectory_library(robot)
