@@ -54,12 +54,13 @@ from iiwa_batter.swing_optimization.graduate_student_descent import (
     COARSE_LINK,
 )
 
-STATE = "TEST"
+STATE = "FINAL"
 
 if STATE == "FINAL":
     NUM_PROCESSES = 8
     NUM_INITIAL_POSITIONS = 2*NUM_PROCESSES
     MAIN_IMPACT_ITERATIONS = 1000
+    COARSE_LINK_ITERATIONS = 1000
     MAIN_COARSE_ITERATIONS = 1000
     MAIN_FINE_ITERATIONS = 100
     GROUP_COARSE_ITERATIONS = 1000
@@ -405,5 +406,5 @@ if __name__ == "__main__":
     #robots = ["iiwa14", "kr6r900", "slugger", "batter"]
     robots = ["iiwa14"]
     for robot in robots:
-        reset(robot)
+        #reset(robot)
         make_trajectory_library(robot)
