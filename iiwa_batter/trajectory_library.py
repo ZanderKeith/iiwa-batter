@@ -52,15 +52,15 @@ from iiwa_batter.naive_full_trajectory_optimization import (
 # GROUP_COARSE_ITERATIONS = 1000
 # GROUP_FINE_ITERATIONS = 20
 
-NUM_PROCESSES = 2
+NUM_PROCESSES = 4
 NUM_INITIAL_POSITIONS = NUM_PROCESSES
-MAIN_IMPACT_ITERATIONS = 30
+MAIN_IMPACT_ITERATIONS = 100
 MAIN_COARSE_ITERATIONS = 2
 MAIN_FINE_ITERATIONS = 1
 GROUP_COARSE_ITERATIONS = 2
 GROUP_FINE_ITERATIONS = 1
 
-MAIN_INITIAL_LEARNING_RATE = 1
+MAIN_INITIAL_LEARNING_RATE = 0.1
 MAIN_COARSE_LEARNING_RATE = 1
 MAIN_FINE_LEARNING_RATE = 1
 GROUP_COARSE_LEARNING_RATE = 1
@@ -153,7 +153,7 @@ def main_swing_impact_optimization(robot, target_speed_mph, target_position, pla
             plate_ball_position=plate_ball_position,
             plate_ball_velocity=plate_ball_velocity,
             simulation_dt=CONTACT_DT,
-            iterations=MAIN_impact_ITERATIONS,
+            iterations=MAIN_IMPACT_ITERATIONS,
             initial_position_index=plate_position_index,
             learning_rate=MAIN_INITIAL_LEARNING_RATE,
         )

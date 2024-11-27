@@ -33,6 +33,7 @@ from iiwa_batter.swing_optimization.stochastic_gradient_descent import (
 from iiwa_batter.swing_optimization.partial_trajectory import (
     partial_trajectory_reward
 )
+from iiwa_batter.plotting import plot_learning
 
 def swing_link_reward():
     pass
@@ -107,7 +108,7 @@ def single_swing_impact_optimization(
         perturbed_joint_positions,
         present_reward,
         perturbed_reward,
-        learning_rate,
+        np.deg2rad(learning_rate),
         position_constraints_upper,
         position_constraints_lower
     )
@@ -116,7 +117,7 @@ def single_swing_impact_optimization(
         perturbed_joint_velocities,
         present_reward,
         perturbed_reward,
-        learning_rate,
+        np.deg2rad(learning_rate),
         velocity_constraints_upper,
         velocity_constraints_lower
     )
@@ -135,7 +136,7 @@ def run_swing_impact_optimization(
     iterations=100,
     initial_position_index=0,
     learning_rate=1,
-    save_interval=10,
+    save_interval=1,
     debug_prints=False
 ):
     start_time = time.time()
@@ -154,7 +155,9 @@ def run_swing_impact_optimization(
     )[initial_position_index]
     present_joint_velocities = np.random.uniform(-velocity_constraints_abs, velocity_constraints_abs, NUM_JOINTS)
 
-    training_results = {}
+    training_results = {
+        "learning": {}
+    }
     best_reward = -np.inf
     for i in range(iterations):
         next_joint_positions, next_joint_velocities, present_reward = single_swing_impact_optimization(
@@ -178,7 +181,7 @@ def run_swing_impact_optimization(
             best_joint_velocities = present_joint_velocities
         
         if i % save_interval == 0:
-            training_results[i] = {
+            training_results["learning"][i] = {
                 "present_reward": present_reward,
                 "best_reward_so_far": best_reward
             }
@@ -204,3 +207,5 @@ def run_swing_impact_optimization(
 
     with open(f"{save_directory}/{optimization_name}.dill", "wb") as f:
         dill.dump(training_results, f)
+
+    plot_learning(training_results, f"{save_directory}/learning_{optimization_name}.png")

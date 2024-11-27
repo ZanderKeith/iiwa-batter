@@ -21,6 +21,7 @@ from iiwa_batter.swing_optimization.full_trajectory import (
     single_full_trajectory_torque_only,
     single_full_trajectory_torque_and_position,
 )
+from iiwa_batter.plotting import plot_learning
 
 def run_naive_full_trajectory_optimization(
     robot,
@@ -31,7 +32,7 @@ def run_naive_full_trajectory_optimization(
     simulation_dt=PITCH_DT,
     iterations=100,
     debug_prints=False,
-    save_interval=10,
+    save_interval=1,
     initial_position_index=0,
     learning_rate=1
 ):
@@ -49,7 +50,9 @@ def run_naive_full_trajectory_optimization(
     present_initial_position = find_initial_positions(simulator, diagram, robot_constraints, initial_position_index+1)[initial_position_index]
     present_control_vector = initialize_control_vector(robot_constraints, ball_time_of_flight)
 
-    training_results = {}
+    training_results = {
+        "learning": {}
+    }
     best_reward = -np.inf
     for i in range(iterations):
         next_initial_position, next_control_vector, present_reward = single_full_trajectory_torque_and_position(
@@ -71,7 +74,7 @@ def run_naive_full_trajectory_optimization(
             best_control_vector = present_control_vector
 
         if i % save_interval == 0:
-            training_results[i] = {
+            training_results["learning"][i] = {
                 "present_reward": present_reward,
                 "best_reward_so_far": best_reward,
             }
@@ -95,6 +98,8 @@ def run_naive_full_trajectory_optimization(
 
     with open(f"{save_directory}/{optimization_name}.dill", "wb") as f:
         dill.dump(training_results, f)
+
+    plot_learning(training_results, f"{save_directory}/learning_{optimization_name}")
 
 def run_naive_full_trajectory_optimization_hot_start(
     robot,
@@ -122,7 +127,9 @@ def run_naive_full_trajectory_optimization_hot_start(
     simulator, diagram = setup_simulator(torque_trajectory={}, model_urdf=robot, dt=simulation_dt, robot_constraints=robot_constraints)
     ball_initial_velocity, ball_time_of_flight = find_ball_initial_velocity(target_velocity_mph, target_position)
 
-    training_results = {}
+    training_results = {
+        "learning": {}
+    }
     best_reward = -np.inf
     for i in range(iterations):
         next_initial_position, next_control_vector, present_reward = single_full_trajectory_torque_and_position(
@@ -144,14 +151,12 @@ def run_naive_full_trajectory_optimization_hot_start(
             best_control_vector = present_control_vector
 
         if i % save_interval == 0:
-            training_results[i] = {
+            training_results["learning"][i] = {
                 "present_reward": present_reward,
                 "best_reward_so_far": best_reward,
             }
             training_results["best_initial_position"] = best_initial_position
             training_results["best_control_vector"] = best_control_vector
-            with open(f"{save_directory}/{optimization_name}.dill", "wb") as f:
-                dill.dump(training_results, f)
 
         if i < iterations - 1:
             present_initial_position = next_initial_position
@@ -170,6 +175,8 @@ def run_naive_full_trajectory_optimization_hot_start(
 
     with open(f"{save_directory}/{optimization_name}.dill", "wb") as f:
         dill.dump(training_results, f)
+
+    plot_learning(training_results, f"{save_directory}/learning_{optimization_name}")
 
 def run_naive_full_trajectory_optimization_hot_start_torque_only(
     robot,
@@ -195,7 +202,9 @@ def run_naive_full_trajectory_optimization_hot_start_torque_only(
     simulator, diagram = setup_simulator(torque_trajectory={}, model_urdf=robot, dt=simulation_dt, robot_constraints=robot_constraints)
     ball_initial_velocity, ball_time_of_flight = find_ball_initial_velocity(target_velocity_mph, target_position)
 
-    training_results = {}
+    training_results = {
+        "learning": {}
+    }
     best_reward = -np.inf
     for i in range(iterations):
         next_control_vector, present_reward = single_full_trajectory_torque_only(
@@ -214,7 +223,7 @@ def run_naive_full_trajectory_optimization_hot_start_torque_only(
             best_control_vector = present_control_vector
 
         if i % save_interval == 0:
-            training_results[i] = {
+            training_results["learning"][i] = {
                 "present_reward": present_reward,
                 "best_reward_so_far": best_reward,
             }
@@ -239,3 +248,5 @@ def run_naive_full_trajectory_optimization_hot_start_torque_only(
 
     with open(f"{save_directory}/{optimization_name}.dill", "wb") as f:
         dill.dump(training_results, f)
+
+    plot_learning(training_results, optimization_name, save_directory)
