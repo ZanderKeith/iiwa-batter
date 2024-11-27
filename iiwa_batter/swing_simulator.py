@@ -30,7 +30,7 @@ def make_model_directive(dt=CONTACT_DT, model_urdf="iiwa14", add_contact=True):
     # The robot is sitting next to the origin
 
     # Rotates the base towards the plate just a little so the first joint doesn't max out before crossing the strike zone
-    base_rotation_deg = np.rad2deg(np.pi / 4)
+    base_rotation_deg = np.rad2deg(3 * np.pi / 4)
 
     if add_contact:
         contact_directive = f"""
