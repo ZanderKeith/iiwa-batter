@@ -3,27 +3,9 @@ import numpy as np
 
 from iiwa_batter import (
     PACKAGE_ROOT,
+    NUM_JOINTS
 )
 from iiwa_batter.robot_constraints.get_joint_constraints import JOINT_CONSTRAINTS
-
-# At certain steps of the process, include the human-created things as an initial guess
-
-SWING_IMPACT = {
-    "iiwa14": {
-        "plate_position": np.array([0.75, 0.25, 0.01, -0.6, 0, 0.55, 0]),
-        "plate_velocity": np.array([1, 0, 1, 0, -0.4, 0, -0.5]),
-    }
-}
-
-with open(f"{PACKAGE_ROOT}/../trajectories/student/iiwa14_link.dill", "rb") as f:
-    iiwa14_link_control_vector = dill.load(f)
-
-COARSE_LINK = {
-    "iiwa14": {
-        "initial_position": np.array([0, 0, 0, 0, 0, 0, 0], dtype=np.float64),
-        "control_vector": iiwa14_link_control_vector,
-    }
-}
 
 def student_control_vector(robot, vector, type):
     joint_constraints = JOINT_CONSTRAINTS[robot]
@@ -64,7 +46,29 @@ def keyframe_trajectory(robot, trajectory_timesteps, keyframes):
 
 def trajectory_to_control_vector(robot, trajectory):
     control_vector = np.array([trajectory[key] for key in sorted(trajectory.keys())])
-    with open(f"{PACKAGE_ROOT}/trajectories/student/{robot}_link.dill", "wb") as f:
+    with open(f"{PACKAGE_ROOT}/../trajectories/student/{robot}_link.dill", "wb") as f:
         dill.dump(control_vector, f)
 
     
+# At certain steps of the process, include the human-created things as an initial guess
+
+SWING_IMPACT = {
+    "iiwa14": {
+        "plate_position": student_control_vector("iiwa14", np.array([0.75, 0.25, 0.01, -0.6, 0, 0.55, 0]), "position"),
+        "plate_velocity": student_control_vector("iiwa14", np.array([1, 0, 1, 0, -0.4, 0, -0.5]), "velocity"),
+    }
+}
+
+try:
+    with open(f"{PACKAGE_ROOT}/../trajectories/student/iiwa14_link.dill", "rb") as f:
+        iiwa14_link_control_vector = dill.load(f)
+except FileNotFoundError:
+    print("File not created!")
+    iiwa14_link_control_vector = np.zeros((3, NUM_JOINTS))
+
+COARSE_LINK = {
+    "iiwa14": {
+        "initial_position": student_control_vector("iiwa14", np.array([0.5, 0.25, 0.01, -0.6, 0, 0.55, 0]), "position"),
+        "control_vector": iiwa14_link_control_vector,
+    }
+}

@@ -54,7 +54,7 @@ from iiwa_batter.swing_optimization.graduate_student_descent import (
     COARSE_LINK,
 )
 
-STATE = "LEARNING_RATE_TUNING"
+STATE = "TEST"
 
 if STATE == "FINAL":
     NUM_PROCESSES = 8
@@ -194,10 +194,7 @@ def main_coarse_link_optimization(robot, target_speed_mph, target_position, plat
     optimization_name = f"coarse_link_impact{swing_impact_index}_pos{initial_position_index}"
     if not os.path.exists(f"{save_directory}/{optimization_name}.dill"):
         if initial_position_index == 0:
-            robot_constraints = JOINT_CONSTRAINTS[robot]
-            _, ball_time_of_flight = find_ball_initial_velocity(target_speed_mph, target_position)
-            print("You haven't done human machine learning yet!")
-            searched_control_vector = initialize_control_vector(robot_constraints, ball_time_of_flight)
+            searched_control_vector = COARSE_LINK[robot]["control_vector"]
         else:
             robot_constraints = JOINT_CONSTRAINTS[robot]
             _, ball_time_of_flight = find_ball_initial_velocity(target_speed_mph, target_position)
@@ -408,5 +405,5 @@ if __name__ == "__main__":
     #robots = ["iiwa14", "kr6r900", "slugger", "batter"]
     robots = ["iiwa14"]
     for robot in robots:
-        #reset(robot)
+        reset(robot)
         make_trajectory_library(robot)
