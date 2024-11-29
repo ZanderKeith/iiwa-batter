@@ -33,6 +33,7 @@ def partial_trajectory_reward(
     initial_ball_position,
     initial_ball_velocity,
     torque_trajectory,
+    meshcat=None,
 ):
     reset_systems(diagram, torque_trajectory)
     status_dict = run_swing_simulation(
@@ -44,6 +45,7 @@ def partial_trajectory_reward(
         initial_joint_velocities=initial_joint_velocities,
         initial_ball_position=initial_ball_position,
         initial_ball_velocity=initial_ball_velocity,
+        meshcat=meshcat
     )
 
     result = status_dict["result"]
