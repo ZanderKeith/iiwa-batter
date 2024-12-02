@@ -57,8 +57,8 @@ from iiwa_batter.swing_optimization.graduate_student_descent import (
 STATE = "FINAL"
 
 if STATE == "FINAL":
-    NUM_PROCESSES = 8
-    NUM_INITIAL_POSITIONS = 2*NUM_PROCESSES
+    NUM_PROCESSES = 4
+    NUM_INITIAL_POSITIONS = 16
     MAIN_IMPACT_ITERATIONS = 1000
     COARSE_LINK_ITERATIONS = 1000
     MAIN_COARSE_ITERATIONS = 1000
@@ -89,9 +89,9 @@ if STATE == "TEST":
 MAIN_INITIAL_LEARNING_RATE = 0.2
 COARSE_LINK_LEARNING_RATE = 4
 MAIN_COARSE_LEARNING_RATE = 1
-MAIN_FINE_LEARNING_RATE = 1
+MAIN_FINE_LEARNING_RATE = 0.01
 GROUP_COARSE_LEARNING_RATE = 1
-GROUP_FINE_LEARNING_RATE = 1
+GROUP_FINE_LEARNING_RATE = 0.1
 
 LIBRARY_SPEEDS_MPH = [90, 80, 70]
 
@@ -189,6 +189,11 @@ def main_swing_impact_optimization(robot, target_speed_mph, target_position, pla
             simulation_dt=CONTACT_DT,
             iterations=MAIN_IMPACT_ITERATIONS,
         )
+
+    trajectory = Trajectory(robot, target_speed_mph, target_position, optimization_name)
+    results = trajectory.load_training_results()
+
+    return results["final_best_reward"], plate_position_index
 
 def main_coarse_link_optimization(robot, target_speed_mph, target_position, plate_time, searched_initial_position, swing_impact_index, initial_position_index):
     save_directory = f"{PACKAGE_ROOT}/../trajectories/{robot}/{target_speed_mph}_{target_position}"
@@ -298,6 +303,7 @@ def make_trajectory_library(robot):
     print("Finding swing impact for main target")
     plate_time, plate_ball_position, plate_ball_velocity = calculate_plate_time_and_ball_state(main_target_speed_mph, main_target_position)
     main_pool = Pool(NUM_PROCESSES)
+    main_answers = []
     if not os.path.exists(f"{save_directory}/impact_0.dill"):
         generated_plate_positions = find_initial_positions(robot, NUM_INITIAL_POSITIONS-1, bounding_box=SWING_IMPACT_BOUNDING_BOX)
         searched_plate_positions = [SWING_IMPACT[robot]["plate_position"]] + generated_plate_positions
@@ -305,39 +311,53 @@ def make_trajectory_library(robot):
         velocity_constraints_abs = np.array([velocity for velocity in robot_constraints["joint_velocity"].values()])*VELOCITY_CAP_FRACTION
         generated_plate_velocities = [np.random.uniform(-velocity_constraints_abs, velocity_constraints_abs, NUM_JOINTS) for position in range(NUM_INITIAL_POSITIONS-1)]
         searched_plate_velocities = [SWING_IMPACT[robot]["plate_velocity"]] + generated_plate_velocities
-        main_pool.starmap(main_swing_impact_optimization, [(robot, main_target_speed_mph, main_target_position, plate_time, plate_ball_position, plate_ball_velocity, searched_plate_positions[i], searched_plate_velocities[i], i) for i in range(NUM_INITIAL_POSITIONS)])
+        main_results = main_pool.starmap(main_swing_impact_optimization, [(robot, main_target_speed_mph, main_target_position, plate_time, plate_ball_position, plate_ball_velocity, searched_plate_positions[i], searched_plate_velocities[i], i) for i in range(NUM_INITIAL_POSITIONS)])
+    else:
+        # Already did this, just go load it
+        searched_plate_positions = [np.zeros(NUM_JOINTS) for i in range(NUM_INITIAL_POSITIONS)]
+        searched_plate_velocities = [np.zeros(NUM_JOINTS) for i in range(NUM_INITIAL_POSITIONS)]
+        main_results = main_pool.starmap(main_swing_impact_optimization, [(robot, main_target_speed_mph, main_target_position, plate_time, plate_ball_position, plate_ball_velocity, searched_plate_positions[i], searched_plate_velocities[i], i) for i in range(NUM_INITIAL_POSITIONS)])
 
-    # 2. Attempt to find a trajectory which can reach the main target
+    for result in main_results:
+        main_answers.append(result)
+
+    # 2. Pick the best swing impact to optimize further
+    best_index_reward = -np.inf
+    best_impact_index = None
+    for answer in main_answers:
+        if answer[0] > best_index_reward:
+            best_index_reward = answer[0]
+            best_impact_index = answer[1]
+    if best_impact_index is None:
+        # Welp, we're testing stuff
+        best_impact_index = 0
     print("Finding trajectory to reach main target")
     generated_initial_positions = find_initial_positions(robot, NUM_INITIAL_POSITIONS-1)
     searched_initial_positions = [COARSE_LINK[robot]["initial_position"]] + generated_initial_positions
-    main_results = main_pool.starmap(main_coarse_link_optimization, [(robot, main_target_speed_mph, main_target_position, plate_time, searched_initial_positions[j], i, j) for i in range(NUM_INITIAL_POSITIONS) for j in range(NUM_INITIAL_POSITIONS)])
+    main_results = main_pool.starmap(main_coarse_link_optimization, [(robot, main_target_speed_mph, main_target_position, plate_time, searched_initial_positions[j], best_impact_index, j) for j in range(NUM_INITIAL_POSITIONS)])
     main_answers = []
     for result in main_results:
         main_answers.append(result)
     main_pool.close()
 
-    # 3. Pick the best swing from the coarse optimizations and fine tune it
     best_index_reward = -np.inf
-    best_impact_index = None
-    best_position_index = None
+    best_link_index = None
     for answer in main_answers:
         if answer[0] > best_index_reward:
             best_index_reward = answer[0]
-            best_impact_index = answer[1]
-            best_position_index = answer[2]
-    if best_impact_index is None:
-        # Welp, we're testing stuff
-        best_impact_index = 0
-        best_position_index = 0
-    print(f"Best impact index: {best_impact_index}, Best position index: {best_position_index}")
-    print(f"Coarse tuning trajectory with reward {best_index_reward}")
+            best_link_index = answer[2]
+    if best_link_index is None:
+        best_link_index = 0
+
+    print(f"Best impact index: {best_impact_index}")
     optimization_name = "tune_coarse"
     if not os.path.exists(f"{save_directory}/{optimization_name}.dill"):
-        trajectory = Trajectory(robot, main_target_speed_mph, main_target_position, f"coarse_link_impact{best_impact_index}_pos{best_position_index}")
+        trajectory = Trajectory(robot, main_target_speed_mph, main_target_position, f"coarse_link_impact{best_impact_index}_pos{best_link_index}")
         results = trajectory.load_training_results()
         best_initial_position = results["best_initial_position"]
         best_control_vector = results["best_control_vector"]
+        best_reward = results["final_best_reward"]
+        print(f"Coarse tuning trajectory with fit reward {best_index_reward} and reward {best_reward}")
         run_naive_full_trajectory_optimization_hot_start(
             robot=robot,
             target_velocity_mph=main_target_speed_mph,
@@ -359,7 +379,8 @@ def make_trajectory_library(robot):
         results = trajectory.load_training_results()
         best_initial_position = results["best_initial_position"]
         best_control_vector = results["best_control_vector"]
-        print(f"Fine tuning trajectory with reward {best_index_reward}")
+        best_reward = results["final_best_reward"]
+        print(f"Fine tuning trajectory with reward {best_reward}")
         run_naive_full_trajectory_optimization_hot_start(
             robot=robot,
             target_velocity_mph=main_target_speed_mph,
@@ -377,9 +398,11 @@ def make_trajectory_library(robot):
 
     trajectory = Trajectory(robot, main_target_speed_mph, main_target_position, "tune_fine")
     results = trajectory.load_training_results()
-    print(f"Best reward from main swing: {results['final_best_reward']}")
+    print(f"{robot} Best reward from main swing: {results['final_best_reward']}")
     best_initial_position = results["best_initial_position"]
     best_control_vector = results["best_control_vector"]
+
+    return
 
     # 4. Using the best swing at the main target as an initial guess, do a coarse optimization for the rest of the targets
     print("Starting group coarse optimization")
@@ -404,7 +427,7 @@ def reset(robot):
 
 if __name__ == "__main__":
     #robots = ["iiwa14", "kr6r900", "slugger", "batter"]
-    robots = ["iiwa14"]
+    robots = ["iiwa14", "kr6r900", "slugger"]
     for robot in robots:
         #reset(robot)
         make_trajectory_library(robot)

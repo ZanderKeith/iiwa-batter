@@ -117,7 +117,7 @@
     <child link="iiwa_link_3"/>
     <origin rpy="1.570796326794897 0 3.141592653589793" xyz="0 0.2045 0"/>
     <axis xyz="0 0 1"/>
-    <limit drake:acceleration="8.74" effort="176" lower="0" upper="0" velocity="1.7453292519943295"/>
+    <limit drake:acceleration="8.74" effort="176" lower="0" upper="0" velocity="0"/>
     <dynamics damping="0.5"/>
   </joint>
   <link name="iiwa_link_3">

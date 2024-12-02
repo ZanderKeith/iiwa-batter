@@ -21,7 +21,7 @@ def student_control_vector(robot, vector, type):
         chosen_direction = np.where(vector > 0, position_upper_constraints, position_lower_constraints)
         control_vector = chosen_direction * np.abs(vector)
     else:
-        raise ValueError("Invalid control vector type")
+        raise ValueError(f"Invalid control vector type: {type}")
     return control_vector
 
 
@@ -48,6 +48,7 @@ def trajectory_to_control_vector(robot, trajectory):
     control_vector = np.array([trajectory[key] for key in sorted(trajectory.keys())])
     with open(f"{PACKAGE_ROOT}/../trajectories/student/{robot}_link.dill", "wb") as f:
         dill.dump(control_vector, f)
+    return control_vector
 
     
 # At certain steps of the process, include the human-created things as an initial guess
@@ -56,19 +57,45 @@ SWING_IMPACT = {
     "iiwa14": {
         "plate_position": student_control_vector("iiwa14", np.array([0.75, 0.25, 0.01, -0.6, 0, 0.55, 0]), "position"),
         "plate_velocity": student_control_vector("iiwa14", np.array([1, 0, 1, 0, -0.4, 0, -0.5]), "velocity"),
+    },
+    "kr6r900": {
+        "plate_position": student_control_vector("kr6r900", np.array([0.75, 0.68, 0, -0.6, 0, 0.55, 0.01]), "position"),
+        "plate_velocity": student_control_vector("kr6r900", np.array([0.8, -0.5, 0, 0, 0.5, 0.5, -0.8]), "velocity")
+    },
+    "slugger": {
+        "plate_position": student_control_vector("slugger", np.array([0.72, 0.33, 0, -0.67, 0, 0.55, 0.1]), "position"),
+        "plate_velocity": student_control_vector("slugger", np.array([0.8, -0.8, 0.8, 0.8, 0, 0, -0.8]), "velocity")
     }
 }
-
-try:
-    with open(f"{PACKAGE_ROOT}/../trajectories/student/iiwa14_link.dill", "rb") as f:
-        iiwa14_link_control_vector = dill.load(f)
-except FileNotFoundError:
-    print("File not created!")
-    iiwa14_link_control_vector = np.zeros((3, NUM_JOINTS))
 
 COARSE_LINK = {
     "iiwa14": {
         "initial_position": student_control_vector("iiwa14", np.array([0.5, 0.25, 0.01, -0.6, 0, 0.55, 0]), "position"),
-        "control_vector": iiwa14_link_control_vector,
+        "control_vector": np.zeros((3, NUM_JOINTS)),
+    },
+    "kr6r900": {
+        "initial_position": student_control_vector("kr6r900", np.array([0.1, 0.8, 0.01, -0.7, 0, 0.55, 0.2]), "position"),
+        "control_vector": np.zeros((3, NUM_JOINTS))
+    },
+    # torque_keyframe_controls = {
+    # 0: np.array([1, -0.58, 0, 0.21, 0, -0.1, -0.81]),
+    # ball_time_of_flight: np.zeros(NUM_JOINTS),
+    "slugger": {
+        "initial_position": student_control_vector("slugger", np.array([0.35, 0.1, -0.5, -1, 0, 0.8, 0.9]), "position"),
+        "control_vector": np.zeros((3, NUM_JOINTS))
     }
+    # torque_keyframe_controls = {
+    # 0: np.array([1, 0, 1, 0.3, 0, 0, -0.1]),
+    # 0.4: np.array([1, -1, 1, 1, 0, 0, -1]),
+    # ball_time_of_flight: np.zeros(NUM_JOINTS),
 }
+
+
+try:
+    for robot in COARSE_LINK.keys():
+        file_name = f"{PACKAGE_ROOT}/../trajectories/student/{robot}_link.dill"
+        with open(file_name, "rb") as f:
+            COARSE_LINK[robot]["control_vector"] = dill.load(f)
+except FileNotFoundError:
+    print(f"File not created! {file_name}")
+
