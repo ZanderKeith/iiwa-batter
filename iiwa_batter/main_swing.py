@@ -28,6 +28,8 @@ if STATE == "TEST":
     ITERATIONS = 1
 
 LEARNING_RATE = 10
+POSITION_VARIANCE = np.deg2rad(1)/10
+TORQUE_VARIANCE = 1/10
 
 def optimize_main_swing(robot):
     save_directory = f"{PACKAGE_ROOT}/../trajectories/{robot}/main"
@@ -64,6 +66,8 @@ def optimize_main_swing(robot):
         simulation_dt=CONTACT_DT,
         iterations=ITERATIONS,
         learning_rate=LEARNING_RATE,
+        position_variance=POSITION_VARIANCE,
+        torque_variance=TORQUE_VARIANCE,
     )
 
     new_trajectory = Trajectory(robot, main_target_speed_mph, main_target_position, "main")
@@ -126,13 +130,12 @@ def transfer_main_swing(robot, target_speed_mph):
     return
 
 if __name__ == "__main__":
-    main_swing_robots = ["iiwa14"]
-    transfer_robots = ["iiwa14"]
+    main_swing_robots = ["slugger"]
     for robot in main_swing_robots:
         optimize_main_swing(robot)
-    for robot in transfer_robots:
-        for speed in LIBRARY_SPEEDS_MPH[1:]:
-            transfer_main_swing(robot, speed)
+    # for robot in transfer_robots:
+    #     for speed in LIBRARY_SPEEDS_MPH[1:]:
+    #         transfer_main_swing(robot, speed)
 
 
 """
