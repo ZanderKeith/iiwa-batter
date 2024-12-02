@@ -220,7 +220,7 @@ def real_time_operation(
     _, closest_time_of_flight = find_ball_initial_velocity(closest_speed, closest_position)
 
     # Make the robot start with the initial position but don't do anything yet
-    start_trajectory_loader = Trajectory(robot, closest_speed, closest_position, "fine")
+    start_trajectory_loader = Trajectory(robot, closest_speed, closest_position, "tune_fine")
     start_initial_position, start_control_vector, _ = start_trajectory_loader.load_best_trajectory()
     run_swing_simulation(
         simulator=simulator_world,

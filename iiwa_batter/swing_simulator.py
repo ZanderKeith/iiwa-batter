@@ -545,7 +545,6 @@ def run_swing_simulation(
     plant: Diagram = station.GetSubsystemByName("plant")
     collision_check_system: LeafSystem = diagram.GetSubsystemByName("collision_check_system")
     simulator_context = simulator.get_context()
-    station_context = station.GetMyContextFromRoot(simulator_context)
     plant_context = plant.GetMyContextFromRoot(simulator_context)
     collision_check_system_context = collision_check_system.GetMyContextFromRoot(simulator_context)
 
