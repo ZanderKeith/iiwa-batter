@@ -61,6 +61,10 @@ SWING_IMPACT = {
     "kr6r900": {
         "plate_position": student_control_vector("kr6r900", np.array([0.75, 0.68, 0, -0.6, 0, 0.55, 0.01]), "position"),
         "plate_velocity": student_control_vector("kr6r900", np.array([0.8, -0.5, 0, 0, 0.5, 0.5, -0.8]), "velocity")
+    },
+    "slugger": {
+        "plate_position": student_control_vector("slugger", np.array([0.72, 0.33, 0, -0.67, 0, 0.55, 0.1]), "position"),
+        "plate_velocity": student_control_vector("slugger", np.array([0.8, -0.8, 0.8, 0.8, 0, 0, -0.8]), "velocity")
     }
 }
 
@@ -72,11 +76,20 @@ COARSE_LINK = {
     "kr6r900": {
         "initial_position": student_control_vector("kr6r900", np.array([0.1, 0.8, 0.01, -0.7, 0, 0.55, 0.2]), "position"),
         "control_vector": np.zeros((3, NUM_JOINTS))
-    }
+    },
     # torque_keyframe_controls = {
     # 0: np.array([1, -0.58, 0, 0.21, 0, -0.1, -0.81]),
     # ball_time_of_flight: np.zeros(NUM_JOINTS),
+    "slugger": {
+        "initial_position": student_control_vector("slugger", np.array([0.35, 0.1, -0.5, -1, 0, 0.8, 0.9]), "position"),
+        "control_vector": np.zeros((3, NUM_JOINTS))
+    }
+    # torque_keyframe_controls = {
+    # 0: np.array([1, 0, 1, 0.3, 0, 0, -0.1]),
+    # 0.4: np.array([1, -1, 1, 1, 0, 0, -1]),
+    # ball_time_of_flight: np.zeros(NUM_JOINTS),
 }
+
 
 try:
     for robot in COARSE_LINK.keys():
