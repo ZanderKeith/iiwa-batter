@@ -44,9 +44,9 @@ def keyframe_trajectory(robot, trajectory_timesteps, keyframes):
     return torque_trajectory
 
 
-def trajectory_to_control_vector(robot, trajectory):
+def trajectory_to_control_vector(robot, ball_speed_mph, trajectory):
     control_vector = np.array([trajectory[key] for key in sorted(trajectory.keys())])
-    with open(f"{PACKAGE_ROOT}/../trajectories/student/{robot}_link.dill", "wb") as f:
+    with open(f"{PACKAGE_ROOT}/../trajectories/student/{robot}_link_{ball_speed_mph}.dill", "wb") as f:
         dill.dump(control_vector, f)
     return control_vector
 
@@ -71,18 +71,39 @@ SWING_IMPACT = {
 COARSE_LINK = {
     "iiwa14": {
         "initial_position": student_control_vector("iiwa14", np.array([0.5, 0.25, 0.01, -0.6, 0, 0.55, 0]), "position"),
-        "control_vector": np.zeros((3, NUM_JOINTS)),
+        "control_vector": {
+            70: np.zeros((3, NUM_JOINTS)),
+            # torque_keyframe_controls = {
+            #     0: np.array([1, -0.17, 0, 0.21, 0, -0.1, -0.1]),
+            #     ball_time_of_flight - 3*CONTROL_DT: np.array([1, -1, 0, 0.21, 0, -0.1, -0.1]),
+            #     ball_time_of_flight: np.zeros(NUM_JOINTS),
+            # }
+            80: np.zeros((3, NUM_JOINTS)),
+            # torque_keyframe_controls = {
+            #     0: np.array([1, -0.17, 0, 0.21, 0, -0.1, -0.2]),
+            #     ball_time_of_flight: np.zeros(NUM_JOINTS),
+            # }
+            90: np.zeros((3, NUM_JOINTS)),
+        }
     },
     "kr6r900": {
         "initial_position": student_control_vector("kr6r900", np.array([0.1, 0.8, 0.01, -0.7, 0, 0.55, 0.2]), "position"),
-        "control_vector": np.zeros((3, NUM_JOINTS))
+        "control_vector": {
+            70: np.zeros((3, NUM_JOINTS)),
+            80: np.zeros((3, NUM_JOINTS)),
+            90: np.zeros((3, NUM_JOINTS)),
+        }
     },
     # torque_keyframe_controls = {
     # 0: np.array([1, -0.58, 0, 0.21, 0, -0.1, -0.81]),
     # ball_time_of_flight: np.zeros(NUM_JOINTS),
     "slugger": {
         "initial_position": student_control_vector("slugger", np.array([0.35, 0.1, -0.5, -1, 0, 0.8, 0.9]), "position"),
-        "control_vector": np.zeros((3, NUM_JOINTS))
+        "control_vector": {
+            70: np.zeros((3, NUM_JOINTS)),
+            80: np.zeros((3, NUM_JOINTS)),
+            90: np.zeros((3, NUM_JOINTS)),
+        }
     }
     # torque_keyframe_controls = {
     # 0: np.array([1, 0, 1, 0.3, 0, 0, -0.1]),
@@ -91,11 +112,13 @@ COARSE_LINK = {
 }
 
 
-try:
-    for robot in COARSE_LINK.keys():
-        file_name = f"{PACKAGE_ROOT}/../trajectories/student/{robot}_link.dill"
-        with open(file_name, "rb") as f:
-            COARSE_LINK[robot]["control_vector"] = dill.load(f)
-except FileNotFoundError:
-    print(f"File not created! {file_name}")
+for robot in COARSE_LINK.keys():
+    for pitch_speed_mph in [70, 80, 90]:
+        file_name = f"{PACKAGE_ROOT}/../trajectories/student/{robot}_link_{pitch_speed_mph}.dill"
+        try:
+            with open(file_name, "rb") as f:
+                COARSE_LINK[robot]["control_vector"][pitch_speed_mph] = dill.load(f)
+        except FileNotFoundError:
+            print(f"File not created! {file_name}")
+
 
