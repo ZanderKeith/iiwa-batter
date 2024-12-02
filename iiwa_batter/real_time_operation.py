@@ -31,8 +31,8 @@ from iiwa_batter.swing_optimization.stochastic_gradient_descent import (
     descent_step,
 )
 
-NUM_LOW_FIDELITY_ITERATIONS = 10
-NUM_LOW_FIDELITY_WORKERS = 1
+NUM_LOW_FIDELITY_ITERATIONS = 8
+NUM_LOW_FIDELITY_WORKERS = 8
 
 LOW_FIDELITY_LEARNING_RATE = 10
 LOW_FIDELITY_DT = PITCH_DT*10
@@ -52,6 +52,7 @@ def measure_ball_pitch(pitch_speed_world, pitch_position_world, pitch_speed_meas
 
     return measured_pitch_speed, measured_pitch_position
 
+
 def measure_ball(ball_position_world, ball_velocity_world, ball_position_measurement_error, ball_velocity_measurement_error):
     """Measure the ball's position and speed in the world.
     
@@ -65,6 +66,7 @@ def measure_ball(ball_position_world, ball_velocity_world, ball_position_measure
 
     return measured_ball_position, measured_ball_velocity
 
+
 def measure_joints(joint_position_world, joint_velocity_world, joint_position_measurement_error, joint_velocity_measurement_error):
     """Measure the robot's joint positions and velocities in the world.
     
@@ -77,6 +79,7 @@ def measure_joints(joint_position_world, joint_velocity_world, joint_position_me
     measured_joint_velocities = joint_velocity_world + velocity_noise
 
     return measured_joint_positions, measured_joint_velocities
+
 
 def find_next_actions(
     robot,
@@ -307,7 +310,6 @@ def real_time_operation(
             )
 
     return taken_trajectory, status_dict
-
 
 if __name__ == "__main__":
     np.random.seed(0)

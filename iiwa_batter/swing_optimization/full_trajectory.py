@@ -79,6 +79,7 @@ def single_full_trajectory_torque_only(
     ball_time_of_flight,
     torque_constraints,
     learning_rate=1,
+    torque_variance=1,
 ):
     """Run stochastic optimization on the control vector for a single full trajectory, only updating the torque values"""
 
@@ -93,7 +94,7 @@ def single_full_trajectory_torque_only(
         ball_time_of_flight,
     )
 
-    perturbed_control_vector = perturb_vector(present_control_vector, 1, torque_constraints, -torque_constraints)
+    perturbed_control_vector = perturb_vector(present_control_vector, torque_variance, torque_constraints, -torque_constraints)
     perturbed_reward = full_trajectory_reward(
         simulator,
         diagram,

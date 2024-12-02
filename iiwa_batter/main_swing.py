@@ -1,5 +1,7 @@
 import os
 
+import numpy as np
+
 from iiwa_batter import (
     PACKAGE_ROOT,
     CONTACT_DT,
@@ -40,6 +42,7 @@ def optimize_main_swing(robot):
         # Start from the student's best guess
         best_initial_position = COARSE_LINK[robot]["initial_position"]
         best_control_vector = COARSE_LINK[robot]["control_vector"][main_target_speed_mph]
+        best_reward = -np.inf
         print(f"Fine tuning student's trajectory for {robot} at {main_target_speed_mph} over {ITERATIONS} iterations")
     else:
         # Improve from where was left off previously
@@ -63,15 +66,64 @@ def optimize_main_swing(robot):
         learning_rate=LEARNING_RATE,
     )
 
-    trajectory = Trajectory(robot, main_target_speed_mph, main_target_position, "main")
-    results = trajectory.load_training_results()
-    print(f"{robot} best reward from main swing: {results['final_best_reward']}")
-    return
+    new_trajectory = Trajectory(robot, main_target_speed_mph, main_target_position, "main")
+    new_results = new_trajectory.load_training_results()
+    new_best_reward = new_results["final_best_reward"]
+    print(f"{robot} best reward from main swing: {new_best_reward}")
+    if new_best_reward < best_reward:
+        print(f"Reward {new_best_reward} < {best_reward}, reverting to previous optimization")
+        trajectory.save_training_results(results)
 
 
 def transfer_main_swing(robot, target_speed_mph):
     # Now that we have the best initial position for the fastest pitch, transfer it to the other pitch speeds
-    raise NotImplementedError("Need to implement this")
+    save_directory = f"{PACKAGE_ROOT}/../trajectories/{robot}/transfer"
+    if not os.path.exists(save_directory):
+        os.makedirs(save_directory)
+
+    main_target_position = LIBRARY_POSITIONS[0]
+    optimization_name = f"{target_speed_mph}"
+
+    if not os.path.exists(f"{save_directory}/{optimization_name}.dill"):
+        # Start from the student's best guess
+        best_control_vector = COARSE_LINK[robot]["control_vector"][target_speed_mph]
+        best_reward = -np.inf
+        main_trajectory = Trajectory(robot, LIBRARY_SPEEDS_MPH[0], main_target_position, "main")
+        main_trajectory_results = main_trajectory.load_training_results()
+        initial_position = main_trajectory_results["best_initial_position"]
+        print(f"Fine tuning student's trajectory for {robot} at {target_speed_mph} over {ITERATIONS} iterations")
+    else:
+        # Improve from where was left off previously
+        trajectory = Trajectory(robot, target_speed_mph, main_target_position, "transfer")
+        results = trajectory.load_training_results()
+        best_control_vector = results["best_control_vector"]
+        initial_position = results["best_initial_position"]
+        best_reward = results["final_best_reward"]
+        print(f"Improving trajectory from previous optimization for {robot} at {target_speed_mph} with reward {best_reward} over {ITERATIONS} iterations")
+
+    run_naive_full_trajectory_optimization_hot_start_torque_only(
+        robot=robot,
+        target_velocity_mph=target_speed_mph,
+        target_position=main_target_position,
+        optimization_name=optimization_name,
+        save_directory=save_directory,
+        initial_joint_positions=initial_position,
+        present_control_vector=best_control_vector,
+        simulation_dt=CONTACT_DT,
+        iterations=ITERATIONS,
+        learning_rate=LEARNING_RATE,
+    )
+
+    new_trajectory = Trajectory(robot, target_speed_mph, main_target_position, "transfer")
+    new_results = new_trajectory.load_training_results()
+    new_best_reward = new_results["final_best_reward"]
+    print(f"{robot} best reward from main swing: {new_best_reward}")
+
+    if new_best_reward < best_reward:
+        print(f"Reward {new_best_reward} < {best_reward}, reverting to previous optimization")
+        trajectory.save_training_results(results)
+
+    return
 
 if __name__ == "__main__":
     main_swing_robots = ["iiwa14"]
