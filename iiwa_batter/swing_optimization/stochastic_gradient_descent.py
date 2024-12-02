@@ -106,7 +106,7 @@ def make_torque_trajectory(control_vector, flight_time):
 
 
 def perturb_vector(original_vector, variance, upper_limits, lower_limits):
-    perturbation = np.random.normal(0, variance, size=original_vector.shape)
+    perturbation = np.random.normal(0, variance/10, size=original_vector.shape)
     perturbed_vector = np.clip(original_vector + perturbation, lower_limits, upper_limits)
     return perturbed_vector
 

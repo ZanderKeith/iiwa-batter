@@ -54,9 +54,9 @@ def full_trajectory_reward(
     if result == "collision":
         severity = status_dict["contact_severity"]
         if severity <= 10:
-            return (-1 * severity) - 20
+            return ((-1 * severity) - 1) / 10
         else:
-            return (-10 * np.log10(severity)) - 20
+            return ((-10 * np.log10(severity)) - 1) / 10
     elif result == "miss":
         return -10 * status_dict["closest_approach"]
     elif result == "hit":
@@ -65,7 +65,7 @@ def full_trajectory_reward(
         land_location = path[-1, :2]
         distance = np.linalg.norm(land_location)
         multiplier = ball_distance_multiplier(land_location)
-        return distance * multiplier
+        return distance * multiplier * 0.01
     else:
         raise ValueError(f"Unknown result: {result}")
 
