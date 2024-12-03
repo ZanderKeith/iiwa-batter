@@ -30,7 +30,7 @@ from iiwa_batter.swing_simulator import setup_simulator, reset_systems, run_swin
 
 from iiwa_batter.real_time_operation import real_time_operation
 
-NUM_NEW_PITCHES = 73
+NUM_NEW_PITCHES = 20
 
 TEST_CASES = {
     "perfect": {
@@ -78,9 +78,9 @@ def make_pitches(robot):
     z_max = max(z_positions)
 
     pitches = []
-    for speed in LIBRARY_SPEEDS_MPH:
-        for position in LIBRARY_POSITIONS:
-            pitches.append((speed, position))
+    # for speed in LIBRARY_SPEEDS_MPH:
+    #     for position in LIBRARY_POSITIONS:
+    #         pitches.append((speed, position))
     
     for i in range(NUM_NEW_PITCHES):
         speed = np.random.uniform(speed_min, speed_max)

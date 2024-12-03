@@ -56,7 +56,7 @@ def partial_trajectory_reward(
         else:
             return ((-10 * np.log10(severity)) - 1) / 10
     elif result == "miss":
-        return -10 * status_dict["closest_approach"]
+        return -1 * status_dict["closest_approach"]
     elif result == "hit":
         ball_position, ball_velocity = parse_simulation_state(simulator, diagram, "ball")
         path = ball_flight_path(ball_position, ball_velocity)

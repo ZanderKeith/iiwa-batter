@@ -22,13 +22,13 @@ from iiwa_batter.naive_full_trajectory_optimization import (
 STATE = "FINAL"
 
 if STATE == "FINAL":
-    ITERATIONS = 1000
+    ITERATIONS = 10000
 if STATE == "LEARNING_RATE_TUNING":
     ITERATIONS = 10
 if STATE == "TEST":
     ITERATIONS = 1
 
-LEARNING_RATE = 1
+LEARNING_RATE = 1/10
 POSITION_VARIANCE = np.deg2rad(1)/10
 TORQUE_VARIANCE = 1/10
 

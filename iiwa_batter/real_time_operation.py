@@ -34,15 +34,16 @@ from iiwa_batter.swing_optimization.stochastic_gradient_descent import (
     expand_torque_trajectory,
 )
 
-NUM_LOW_FIDELITY_ITERATIONS = 10
-NUM_LOW_FIDELITY_WORKERS = 8
+NUM_LOW_FIDELITY_ITERATIONS = 2
+NUM_LOW_FIDELITY_WORKERS = 10
+NUM_LOW_FIDELITY_TRAJECTORIES = NUM_LOW_FIDELITY_WORKERS * 2
 
 # Can't pickle a simulator / diagram so we have to make these global to pass them to the workers
 WORKER_SIMULATORS = []
 WORKER_DIAGRAMS = []
 
-LOW_FIDELITY_LEARNING_RATE = 1
-LOW_FIDELITY_DT = CONTACT_DT * 100 # 100 times faster than the world
+LOW_FIDELITY_LEARNING_RATE = 10
+LOW_FIDELITY_DT = CONTACT_DT * 200 # 200 times faster than the world (still relatively accurate)
 
 BASE_TRAJECTORY = "tune_fine"
 
@@ -132,37 +133,38 @@ def find_next_actions(
     
     ball_positions = []
     ball_velocities = []
-    for i in range(NUM_LOW_FIDELITY_WORKERS):
+    for i in range(NUM_LOW_FIDELITY_TRAJECTORIES):
         ball_position_noise = np.random.normal(0, ball_position_sample_distribution)
         ball_velocity_noise = np.random.normal(0, ball_velocity_sample_distribution)
         ball_positions.append(measured_ball_position + ball_position_noise)
         ball_velocities.append(measured_ball_velocity + ball_velocity_noise)
     
-    best_average_reward = -np.inf
     initial_average_reward = None
     for i in range(NUM_LOW_FIDELITY_ITERATIONS):
         present_rewards = []
         present_trajectory = make_torque_trajectory(present_control_vector, ball_flight_time)
-        results = worker_pool.starmap(worker_task, [(start_time, measured_joint_positions, measured_joint_velocities, ball_positions[j], ball_velocities[j], present_trajectory, j) for j in range(NUM_LOW_FIDELITY_WORKERS)])
+        results = worker_pool.starmap(worker_task, [(start_time, measured_joint_positions, measured_joint_velocities, ball_positions[j], ball_velocities[j], present_trajectory, j) for j in range(NUM_LOW_FIDELITY_TRAJECTORIES)])
         for result in results:
             present_rewards.append(result)
         present_average_reward = np.mean(present_rewards)
 
+        if initial_average_reward is None:
+            initial_average_reward = present_average_reward
+            best_average_reward = present_average_reward
+            best_control_vector = present_control_vector
         if present_average_reward > best_average_reward:
             best_average_reward = present_average_reward
             best_control_vector = present_control_vector
-        if initial_average_reward is None:
-            initial_average_reward = present_average_reward
 
         if i > NUM_LOW_FIDELITY_ITERATIONS - 1:
             break
         
         worker_trajectories = []
-        for j in range(NUM_LOW_FIDELITY_WORKERS):
+        for j in range(NUM_LOW_FIDELITY_TRAJECTORIES):
             perturbed_control_vector = perturb_vector(present_control_vector, learning_rate, torque_constraints, -torque_constraints)
             worker_trajectories.append(make_torque_trajectory(perturbed_control_vector, ball_flight_time))
         perturbed_rewards = []
-        results = worker_pool.starmap(worker_task, [(start_time, measured_joint_positions, measured_joint_velocities, ball_positions[j], ball_velocities[j], worker_trajectories[j], j) for j in range(NUM_LOW_FIDELITY_WORKERS)])
+        results = worker_pool.starmap(worker_task, [(start_time, measured_joint_positions, measured_joint_velocities, ball_positions[j], ball_velocities[j], worker_trajectories[j], j) for j in range(NUM_LOW_FIDELITY_TRAJECTORIES)])
         for result in results:
             perturbed_rewards.append(result)
         perturbed_average_reward = np.mean(perturbed_rewards)
@@ -251,7 +253,7 @@ def real_time_operation(
     WORKER_SIMULATORS = []
     global WORKER_DIAGRAMS
     WORKER_DIAGRAMS = []
-    for i in range(NUM_LOW_FIDELITY_WORKERS):
+    for i in range(NUM_LOW_FIDELITY_TRAJECTORIES):
         simulator, diagram = setup_simulator(
             torque_trajectory={},
             model_urdf=robot,
