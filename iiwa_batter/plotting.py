@@ -1,4 +1,5 @@
 import dill
+import numpy as np
 import matplotlib.pyplot as plt
 
 from iiwa_batter import (
@@ -9,6 +10,8 @@ from iiwa_batter.robot_constraints.get_joint_constraints import JOINT_CONSTRAINT
 
 BACKGROUND_COLOR = "#1F1F1F"
 TEXT_COLOR = "white"
+
+TABLE_COLUMN_FONT_SIZE = 28
 
 
 def plot_joint_velocity(state_dict, robot_constraints, save_dir):
@@ -39,11 +42,6 @@ def plot_joint_velocity(state_dict, robot_constraints, save_dir):
     fig.savefig(save_dir, facecolor=BACKGROUND_COLOR)
     plt.close(fig)
 
-# trajectory = Trajectory("iiwa14", 90, [0, 0, 0.6], "coarse_0")
-# state_dict = trajectory.recover_trajectory_paths()
-
-# robot_constraints = JOINT_CONSTRAINTS[trajectory.robot]
-# plot_joint_velocity(state_dict, robot_constraints, f"{trajectory.data_directory()}/joint_velocity.png")
 
 def plot_learning(results_dict, save_dir):
 
@@ -64,13 +62,74 @@ def plot_learning(results_dict, save_dir):
     fig.savefig(save_dir, facecolor=BACKGROUND_COLOR)
     plt.close(fig)
 
-# robot = "iiwa14"
-# target_velocity_mph = 90
-# target_position = [0, 0, 0.6]
-# optimization_name = "impact_3"
-# save_directory = f"{PACKAGE_ROOT}/../trajectories/{robot}/{target_velocity_mph}_{target_position}"
 
-# with open(f"{save_directory}/{optimization_name}.dill", "rb") as f:
-#     results_dict = dill.load(f)
+def compare_joint_constraints(robot):
+    # Make a table comparing the joint constraints
+    IMPROVEMENT_COLOR = "#00FF00"
+    WORSE_COLOR = "#FF0000"
 
-# plot_learning(results_dict, f"{save_directory}/learning_{optimization_name}.png")
+    if robot == "iiwa14":
+        fig, axes = plt.subplots(ncols=2, figsize=(6, 6))
+    else:
+        fig, axes = plt.subplots(ncols=2, figsize=(12, 6))
+
+    robot_constraints = JOINT_CONSTRAINTS[robot]
+
+    plot_constraints = ["torque", "joint_velocity_dps"]
+    constraint_names = ["Torque [Nm]", "Speed [deg/s]"]
+
+    for i, constraint in enumerate(plot_constraints):
+        col_labels = [constraint_names[i]]
+        constraint_data = [robot_constraints[constraint][str(joint + 1)] for joint in range(NUM_JOINTS)]
+        text_data = [constraint_data]
+        if robot != "iiwa14":
+            # Add a column to compare the joint constraints
+            col_labels.append("vs iiwa14")
+            iiwa14_constraint_data = [JOINT_CONSTRAINTS["iiwa14"][constraint][str(joint + 1)] for joint in range(NUM_JOINTS)]
+            compared_data = [((constraint - iiwa14_constraint)/iiwa14_constraint)*100 for iiwa14_constraint, constraint in zip(iiwa14_constraint_data, constraint_data)]
+            text_data.append(compared_data)
+
+        text_data = np.array(text_data).T.astype(int)
+
+        table = axes[i].table(cellText=text_data, colLabels=col_labels, cellLoc="center", loc="center", colColours=["#1F1F1F"]*len(col_labels), cellColours=[["#1F1F1F"]*len(col_labels)]*7)
+        # Increase the font size of the text in the table
+        table.auto_set_font_size(False)
+        table.set_fontsize(TABLE_COLUMN_FONT_SIZE)
+        table.scale(1, 3)
+
+        # For each cell in the table, set the text color
+        for j, (row, col) in enumerate(table.get_celld().keys()):
+            # First column, change all to white
+            if col == 0 or row == 0:
+                table[(row, col)].get_text().set_color(TEXT_COLOR)
+                continue
+            # Second column, if positive set green and add +, if negative set red
+            if col == 1:
+                if row == 0:
+                    continue
+                text = table[(row, col)].get_text()
+                value = text.get_text()
+                prefix = ""
+                if value == "0":
+                    text.set_color(TEXT_COLOR)
+                elif value[0] == "-":
+                    text.set_color(WORSE_COLOR)
+                else:
+                    text.set_color(IMPROVEMENT_COLOR)
+                    prefix="+"
+                text.set_text(f"{prefix}{value}%")
+        
+        # Remove the axes
+        axes[i].axis("off")
+
+    fig.tight_layout()
+
+    # Set background color to black
+    fig.patch.set_facecolor("#0F0F0F")
+
+    fig.savefig(f"{PACKAGE_ROOT}/../benchmarks/{robot}/joint_constraints.png")
+    plt.close(fig)
+
+if __name__ == "__main__":
+    compare_joint_constraints("iiwa14")
+    compare_joint_constraints("kr6r900")
