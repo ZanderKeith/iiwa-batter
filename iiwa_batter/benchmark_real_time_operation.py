@@ -1,4 +1,5 @@
 import os
+import time
 
 import dill
 import numpy as np
@@ -29,7 +30,7 @@ from iiwa_batter.swing_simulator import setup_simulator, reset_systems, run_swin
 
 from iiwa_batter.real_time_operation import real_time_operation
 
-NUM_NEW_PITCHES = 10
+NUM_NEW_PITCHES = 73
 
 TEST_CASES = {
     "perfect": {
@@ -100,11 +101,10 @@ def benchmark_pitches(robot, case):
         pitches = dill.load(f)
     case_dict = TEST_CASES[case]
 
-    main_initial_position, _, _ = start_trajectory_loader.load_best_trajectory()
-    simulator, diagram = setup_simulator(torque_trajectory={}, model_urdf=robot, dt=CONTACT_DT, robot_constraints=JOINT_CONSTRAINTS[robot])
-    
     # Initial position is same for all pitches
     start_trajectory_loader = Trajectory(robot, MAIN_SPEED, MAIN_POSITION, "tune_fine")
+    main_initial_position, _, _ = start_trajectory_loader.load_best_trajectory()
+    simulator, diagram = setup_simulator(torque_trajectory={}, model_urdf=robot, dt=CONTACT_DT, robot_constraints=JOINT_CONSTRAINTS[robot])
     
     total_pitches = len(pitches)
     total_hits = 0
@@ -148,8 +148,10 @@ def benchmark_pitches(robot, case):
         result = status_dict["result"]
         if result == "collision":
             total_collisions += 1
+            print("COLLISION")
         elif result == "miss":
             total_strikes += 1
+            print("MISS")
         elif result == "hit":
             # Check if the ball is fair
             ball_position, ball_velocity = parse_simulation_state(simulator, diagram, "ball")
@@ -158,10 +160,13 @@ def benchmark_pitches(robot, case):
             distance = np.linalg.norm(land_location)
             if land_location[0] < 0:
                 total_fouls += 1
+                print("FOUL")
             elif np.abs(np.arctan(land_location[1] / land_location[0])) > np.pi / 4:
                 total_fouls += 1
+                print("FOUL")
             else:
                 total_hits += 1
+                print("FAIR")
 
         benchmark_results["saved_states"].append(status_dict)
 
@@ -176,6 +181,11 @@ def benchmark_pitches(robot, case):
         dill.dump(benchmark_results, f)
 
 if __name__ == "__main__":
-    make_pitches("iiwa14")
+    with open(f"{PACKAGE_ROOT}/../benchmarks/iiwa14/perfect.dill", "rb") as f:
+        benchmark_results = dill.load(f)
+    start_time = time.time()
+    #make_pitches("iiwa14")
     benchmark_pitches("iiwa14", "perfect")
+    end_time = time.time()
+    print(f"Total time: {end_time-start_time}")
 

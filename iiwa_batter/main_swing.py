@@ -10,7 +10,6 @@ from iiwa_batter.swing_optimization.graduate_student_descent import (
     COARSE_LINK,
 )
 from iiwa_batter.trajectory_library import (
-    STATE,
     LIBRARY_SPEEDS_MPH,
     LIBRARY_POSITIONS,
     Trajectory,
@@ -20,14 +19,16 @@ from iiwa_batter.naive_full_trajectory_optimization import (
     run_naive_full_trajectory_optimization_hot_start_torque_only,
 )
 
+STATE = "FINAL"
+
 if STATE == "FINAL":
-    ITERATIONS = 100
+    ITERATIONS = 1000
 if STATE == "LEARNING_RATE_TUNING":
     ITERATIONS = 10
 if STATE == "TEST":
     ITERATIONS = 1
 
-LEARNING_RATE = 10
+LEARNING_RATE = 1
 POSITION_VARIANCE = np.deg2rad(1)/10
 TORQUE_VARIANCE = 1/10
 
@@ -74,7 +75,7 @@ def optimize_main_swing(robot):
     new_results = new_trajectory.load_training_results()
     new_best_reward = new_results["final_best_reward"]
     print(f"{robot} best reward from main swing: {new_best_reward}")
-    if new_best_reward < best_reward:
+    if new_best_reward < best_reward and best_reward < 10:
         print(f"Reward {new_best_reward} < {best_reward}, reverting to previous optimization")
         trajectory.save_training_results(results)
 

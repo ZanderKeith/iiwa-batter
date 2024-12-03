@@ -104,6 +104,15 @@ def make_torque_trajectory(control_vector, flight_time):
         torque_trajectory[timestep] = control_vector[i]
     return torque_trajectory
 
+def expand_torque_trajectory(original_torque_trajectory, new_flight_time):
+    new_trajectory_timesteps = make_trajectory_timesteps(new_flight_time)
+    expanded_torque_trajectory = {}
+    for timestep in original_torque_trajectory.keys():
+        expanded_torque_trajectory[timestep] = original_torque_trajectory[timestep]
+    for timestep in new_trajectory_timesteps:
+        if timestep not in expanded_torque_trajectory:
+            expanded_torque_trajectory[timestep] = np.zeros(NUM_JOINTS)
+    return expanded_torque_trajectory
 
 def perturb_vector(original_vector, variance, upper_limits, lower_limits):
     perturbation = np.random.normal(0, variance, size=original_vector.shape)
