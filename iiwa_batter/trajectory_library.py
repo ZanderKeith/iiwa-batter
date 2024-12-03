@@ -143,6 +143,9 @@ class Trajectory:
             return dill.load(f)
         
     def load_best_trajectory(self):
+        """
+        Returns the best initial position, control vector, and dt from the training results
+        """
         status_dict = self.load_training_results()
         initial_position = status_dict["best_initial_position"]
         control_vector = status_dict["best_control_vector"]

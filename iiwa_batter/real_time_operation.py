@@ -7,6 +7,7 @@ from iiwa_batter import (
     CONTACT_DT,
     PITCH_DT,
     CONTROL_DT,
+    REALTIME_DT,
     NUM_JOINTS
 )
 from iiwa_batter.physics import (
@@ -24,6 +25,8 @@ from iiwa_batter.trajectory_library import(
     Trajectory,
     LIBRARY_SPEEDS_MPH,
     LIBRARY_POSITIONS,
+    MAIN_SPEED,
+    MAIN_POSITION,
 )
 from iiwa_batter.robot_constraints.get_joint_constraints import JOINT_CONSTRAINTS
 from iiwa_batter.swing_optimization.stochastic_gradient_descent import (
@@ -43,7 +46,6 @@ WORKER_SIMULATORS = []
 WORKER_DIAGRAMS = []
 
 LOW_FIDELITY_LEARNING_RATE = 10
-LOW_FIDELITY_DT = CONTACT_DT * 200 # 200 times faster than the world (still relatively accurate)
 
 BASE_TRAJECTORY = "tune_fine"
 
@@ -183,7 +185,7 @@ def find_next_actions(
     if best_average_reward < initial_average_reward:
         raise ValueError("The best average reward is less than the initial average reward. This is a problem!")
     else:
-        print(f"Timestep {start_time:.5f} improvement: {best_average_reward - initial_average_reward:.3f}")
+        print(f"Timestep {start_time:.2f} improvement: {best_average_reward - initial_average_reward:.4f}")
     next_trajectory = make_torque_trajectory(best_control_vector, ball_flight_time)
 
     return next_trajectory
@@ -205,7 +207,7 @@ def real_time_operation(
     ball_velocity_sample_distribution=0,
     debug_mode=False,
 ):
-    """Real-time operation, in the sense that the CONTACT_DT is the world (taken as truth), and LOW_FIDELITY_DT is the low-fidelity simulation.
+    """Real-time operation, in the sense that the CONTACT_DT is the world (taken as truth), and REALTIME_DT is the low-fidelity simulation.
     
     What we're doing is simulating reality, but planning using a low-fidelity simulation.
     """
@@ -229,8 +231,8 @@ def real_time_operation(
     _, closest_time_of_flight = find_ball_initial_velocity(closest_speed, closest_position)
 
     # Make the robot start with the initial position but don't do anything yet
-    start_trajectory_loader = Trajectory(robot, closest_speed, closest_position, BASE_TRAJECTORY)
-    start_initial_position, start_control_vector, _ = start_trajectory_loader.load_best_trajectory()
+    start_position_loader = Trajectory(robot, MAIN_SPEED, MAIN_POSITION, "main")
+    start_initial_position, _, _ = start_position_loader.load_best_trajectory()
     run_swing_simulation(
         simulator=simulator_world,
         diagram=diagram_world,
@@ -241,14 +243,16 @@ def real_time_operation(
         initial_ball_position=PITCH_START_POSITION,
         initial_ball_velocity=ball_initial_velocity_world,
     )
+
     # Initial guess at planned trajectory is what we got from the library
+    start_trajectory_loader = Trajectory(robot, closest_speed, closest_position, BASE_TRAJECTORY)
+    _, start_control_vector, _ = start_trajectory_loader.load_best_trajectory()
     planned_trajectory = make_torque_trajectory(start_control_vector, closest_time_of_flight)
     # Expand the planned trajectory to the full flight time
     planned_trajectory = expand_torque_trajectory(planned_trajectory, ball_time_of_flight_world+3*CONTROL_DT)
 
-
     # Set up the workers for low-fidelity simulation
-    # I REALLY hate
+    # I REALLY hate that we need to do this, but we can't pickle the simulator / diagram
     global WORKER_SIMULATORS
     WORKER_SIMULATORS = []
     global WORKER_DIAGRAMS
@@ -257,7 +261,7 @@ def real_time_operation(
         simulator, diagram = setup_simulator(
             torque_trajectory={},
             model_urdf=robot,
-            dt=LOW_FIDELITY_DT,
+            dt=REALTIME_DT,
             robot_constraints=JOINT_CONSTRAINTS[robot],
         )
         WORKER_SIMULATORS.append(simulator)
@@ -324,7 +328,10 @@ def real_time_operation(
                 worker_pool=worker_pool,
             )
 
-    return taken_trajectory, status_dict
+    if not debug_mode:
+        return taken_trajectory, status_dict
+    else:
+        return taken_trajectory, status_dict, simulator_world, diagram_world
 
 if __name__ == "__main__":
     np.random.seed(0)

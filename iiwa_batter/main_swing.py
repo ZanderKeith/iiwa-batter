@@ -22,15 +22,15 @@ from iiwa_batter.naive_full_trajectory_optimization import (
 STATE = "FINAL"
 
 if STATE == "FINAL":
-    ITERATIONS = 10000
+    ITERATIONS = 2000
 if STATE == "LEARNING_RATE_TUNING":
     ITERATIONS = 10
 if STATE == "TEST":
     ITERATIONS = 1
 
-LEARNING_RATE = 1/10
-POSITION_VARIANCE = np.deg2rad(1)/10
-TORQUE_VARIANCE = 1/10
+LEARNING_RATE = 1
+POSITION_VARIANCE = np.deg2rad(1)
+TORQUE_VARIANCE = 1
 
 def optimize_main_swing(robot):
     save_directory = f"{PACKAGE_ROOT}/../trajectories/{robot}/main"

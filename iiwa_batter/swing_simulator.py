@@ -195,7 +195,7 @@ class TorqueTrajectorySystem(LeafSystem):
         # Perform rectilinear interpolation by finding the largest timestep that is less than or equal to the current time
         timestep = self.programmed_timesteps[self.programmed_timesteps <= time][-1]
         # if time in [0.0, 0.038, 0.02, 0.018000000000000002]:
-        #     output.SetFromVector(np.array([0] * NUM_JOINTS))
+        #     output.SetFromVector(np.zeros(NUM_JOINTS))
         # else:
         output.SetFromVector(self.torque_trajectory[timestep])
         #print(f"Time: {time}\nTorque: {self.torque_trajectory[timestep][0]}")
@@ -206,7 +206,7 @@ class TorqueTrajectorySystem(LeafSystem):
 
     def update_trajectory(self, torque_trajectory: dict[float, np.ndarray]):
         if len(torque_trajectory) == 0:
-            torque_trajectory = {0: np.array([0] * NUM_JOINTS)}
+            torque_trajectory = {0: np.zeros(NUM_JOINTS)}
         self.torque_trajectory = torque_trajectory
         self.programmed_timesteps = np.array(list(torque_trajectory.keys()))
 
