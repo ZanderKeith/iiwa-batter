@@ -42,8 +42,8 @@ NUM_LOW_FIDELITY_WORKERS = 10
 NUM_LOW_FIDELITY_TRAJECTORIES = NUM_LOW_FIDELITY_WORKERS * 2
 
 # Can't pickle a simulator / diagram so we have to make these global to pass them to the workers
-WORKER_SIMULATORS = []
-WORKER_DIAGRAMS = []
+WORKER_SIMULATORS = None
+WORKER_DIAGRAMS = None
 
 LOW_FIDELITY_LEARNING_RATE = 20
 LOW_FIDELITY_TORQUE_VARIANCE = 2
@@ -255,18 +255,19 @@ def real_time_operation(
     # Set up the workers for low-fidelity simulation
     # I REALLY hate that we need to do this, but we can't pickle the simulator / diagram
     global WORKER_SIMULATORS
-    WORKER_SIMULATORS = []
     global WORKER_DIAGRAMS
-    WORKER_DIAGRAMS = []
-    for i in range(NUM_LOW_FIDELITY_TRAJECTORIES):
-        simulator, diagram = setup_simulator(
-            torque_trajectory={},
-            model_urdf=robot,
-            dt=REALTIME_DT,
-            robot_constraints=JOINT_CONSTRAINTS[robot],
-        )
-        WORKER_SIMULATORS.append(simulator)
-        WORKER_DIAGRAMS.append(diagram)
+    if WORKER_SIMULATORS is None:
+        WORKER_DIAGRAMS = []
+        WORKER_SIMULATORS = []
+        for i in range(NUM_LOW_FIDELITY_TRAJECTORIES):
+            simulator, diagram = setup_simulator(
+                torque_trajectory={},
+                model_urdf=robot,
+                dt=REALTIME_DT,
+                robot_constraints=JOINT_CONSTRAINTS[robot],
+            )
+            WORKER_SIMULATORS.append(simulator)
+            WORKER_DIAGRAMS.append(diagram)
     worker_pool = Pool(NUM_LOW_FIDELITY_WORKERS)
 
     # Now is the fun part: in the interval between the control timesteps, plan using the low-fidelity simulation
@@ -328,6 +329,8 @@ def real_time_operation(
                 ball_flight_time=ball_time_of_flight_world,
                 worker_pool=worker_pool,
             )
+
+    worker_pool.close()
 
     if not debug_mode:
         return taken_trajectory, status_dict
