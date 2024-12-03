@@ -30,7 +30,7 @@ from iiwa_batter.swing_simulator import setup_simulator, reset_systems, run_swin
 
 from iiwa_batter.real_time_operation import real_time_operation
 
-NUM_NEW_PITCHES = 1
+NUM_NEW_PITCHES = 4
 
 TEST_CASES = {
     "perfect": {
@@ -102,8 +102,8 @@ def benchmark_pitches(robot, case):
     case_dict = TEST_CASES[case]
 
     # Initial position is same for all pitches
-    start_trajectory_loader = Trajectory(robot, MAIN_SPEED, MAIN_POSITION, "tune_fine")
-    main_initial_position, _, _ = start_trajectory_loader.load_best_trajectory()
+    start_position_loader = Trajectory(robot, MAIN_SPEED, MAIN_POSITION, "main")
+    main_initial_position, _, _ = start_position_loader.load_best_trajectory()
     simulator, diagram = setup_simulator(torque_trajectory={}, model_urdf=robot, dt=CONTACT_DT, robot_constraints=JOINT_CONSTRAINTS[robot])
     
     total_pitches = len(pitches)
@@ -111,7 +111,7 @@ def benchmark_pitches(robot, case):
     total_fouls = 0
     total_strikes = 0
     total_collisions = 0
-    benchmark_results = {"saved_states": []}
+    benchmark_results = {"taken_trajectories": []}
     for speed, position in pitches:
         # Run the real-time operation
         taken_trajectory, _ = real_time_operation(
@@ -141,7 +141,6 @@ def benchmark_pitches(robot, case):
             initial_joint_velocities=np.zeros(NUM_JOINTS),
             initial_ball_position=PITCH_START_POSITION,
             initial_ball_velocity=ball_initial_velocity_world,
-            record_state=True,
         )
 
         # Check the result
@@ -168,7 +167,7 @@ def benchmark_pitches(robot, case):
                 total_hits += 1
                 print("FAIR")
 
-        benchmark_results["saved_states"].append(status_dict)
+        benchmark_results["taken_trajectories"].append(taken_trajectory)
 
     benchmark_results["total_pitches"] = total_pitches
     benchmark_results["total_hits"] = total_hits
@@ -184,7 +183,7 @@ if __name__ == "__main__":
     with open(f"{PACKAGE_ROOT}/../benchmarks/iiwa14/perfect.dill", "rb") as f:
         benchmark_results = dill.load(f)
     start_time = time.time()
-    make_pitches("iiwa14")
+    #make_pitches("iiwa14")
     benchmark_pitches("iiwa14", "perfect")
     end_time = time.time()
     print(f"Total time: {end_time-start_time}")

@@ -92,7 +92,6 @@ def compare_joint_constraints(robot):
         text_data = np.array(text_data).T.astype(int)
 
         table = axes[i].table(cellText=text_data, colLabels=col_labels, cellLoc="center", loc="center", colColours=["#1F1F1F"]*len(col_labels), cellColours=[["#1F1F1F"]*len(col_labels)]*7)
-        # Increase the font size of the text in the table
         table.auto_set_font_size(False)
         table.set_fontsize(TABLE_COLUMN_FONT_SIZE)
         table.scale(1, 3)
@@ -119,14 +118,10 @@ def compare_joint_constraints(robot):
                     prefix="+"
                 text.set_text(f"{prefix}{value}%")
         
-        # Remove the axes
         axes[i].axis("off")
 
-    fig.tight_layout()
-
-    # Set background color to black
     fig.patch.set_facecolor("#0F0F0F")
-
+    fig.tight_layout()
     fig.savefig(f"{PACKAGE_ROOT}/../benchmarks/{robot}/joint_constraints.png")
     plt.close(fig)
 

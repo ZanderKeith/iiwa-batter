@@ -615,7 +615,7 @@ def run_swing_simulation(
     if result is None:
         # Get final position of the ball
         ball_position, ball_velocity = parse_simulation_state(simulator, diagram, "ball")
-        if ball_position[0] > -0.2:
+        if ball_position[0] > -0.2 or ball_velocity[2] > 0:
             result = "hit"
         else:
             result = "miss"

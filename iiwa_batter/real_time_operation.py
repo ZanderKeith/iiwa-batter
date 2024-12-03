@@ -37,7 +37,7 @@ from iiwa_batter.swing_optimization.stochastic_gradient_descent import (
     expand_torque_trajectory,
 )
 
-NUM_LOW_FIDELITY_ITERATIONS = 2
+NUM_LOW_FIDELITY_ITERATIONS = 3
 NUM_LOW_FIDELITY_WORKERS = 10
 NUM_LOW_FIDELITY_TRAJECTORIES = NUM_LOW_FIDELITY_WORKERS * 2
 
@@ -45,7 +45,8 @@ NUM_LOW_FIDELITY_TRAJECTORIES = NUM_LOW_FIDELITY_WORKERS * 2
 WORKER_SIMULATORS = []
 WORKER_DIAGRAMS = []
 
-LOW_FIDELITY_LEARNING_RATE = 10
+LOW_FIDELITY_LEARNING_RATE = 20
+LOW_FIDELITY_TORQUE_VARIANCE = 2
 
 BASE_TRAJECTORY = "tune_fine"
 
@@ -158,12 +159,12 @@ def find_next_actions(
             best_average_reward = present_average_reward
             best_control_vector = present_control_vector
 
-        if i > NUM_LOW_FIDELITY_ITERATIONS - 1:
+        if i >= NUM_LOW_FIDELITY_ITERATIONS - 1:
             break
         
         worker_trajectories = []
         for j in range(NUM_LOW_FIDELITY_TRAJECTORIES):
-            perturbed_control_vector = perturb_vector(present_control_vector, learning_rate, torque_constraints, -torque_constraints)
+            perturbed_control_vector = perturb_vector(present_control_vector, LOW_FIDELITY_TORQUE_VARIANCE, torque_constraints, -torque_constraints)
             worker_trajectories.append(make_torque_trajectory(perturbed_control_vector, ball_flight_time))
         perturbed_rewards = []
         results = worker_pool.starmap(worker_task, [(start_time, measured_joint_positions, measured_joint_velocities, ball_positions[j], ball_velocities[j], worker_trajectories[j], j) for j in range(NUM_LOW_FIDELITY_TRAJECTORIES)])
@@ -333,17 +334,18 @@ def real_time_operation(
     else:
         return taken_trajectory, status_dict, simulator_world, diagram_world
 
-if __name__ == "__main__":
-    np.random.seed(0)
-    robot = "iiwa14"
-    library_position_index = 3
-    taken_trajectory, status_dict = real_time_operation(
-        robot="iiwa14",
-        pitch_speed_world=LIBRARY_SPEEDS_MPH[0],
-        pitch_position_world=LIBRARY_POSITIONS[library_position_index],
-        pitch_speed_measurement_error=0,
-        pitch_position_measurement_error=0,
-        debug_mode=False
-    )
+# if __name__ == "__main__":
+#     raise NotImplementedError("This script is not meant to be run directly")
+#     np.random.seed(0)
+#     robot = "iiwa14"
+#     library_position_index = 3
+#     taken_trajectory, status_dict = real_time_operation(
+#         robot="iiwa14",
+#         pitch_speed_world=LIBRARY_SPEEDS_MPH[0],
+#         pitch_position_world=LIBRARY_POSITIONS[library_position_index],
+#         pitch_speed_measurement_error=0,
+#         pitch_position_measurement_error=0,
+#         debug_mode=False
+#     )
 
-    print(status_dict)
+#     print(status_dict)
