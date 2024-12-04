@@ -37,7 +37,7 @@ from iiwa_batter.swing_optimization.stochastic_gradient_descent import (
     expand_torque_trajectory,
 )
 
-NUM_LOW_FIDELITY_ITERATIONS = 3
+NUM_LOW_FIDELITY_ITERATIONS = 6
 NUM_LOW_FIDELITY_WORKERS = 10
 NUM_LOW_FIDELITY_TRAJECTORIES = NUM_LOW_FIDELITY_WORKERS * 2
 
@@ -45,8 +45,8 @@ NUM_LOW_FIDELITY_TRAJECTORIES = NUM_LOW_FIDELITY_WORKERS * 2
 WORKER_SIMULATORS = None
 WORKER_DIAGRAMS = None
 
-LOW_FIDELITY_LEARNING_RATE = 20
-LOW_FIDELITY_TORQUE_VARIANCE = 2
+LOW_FIDELITY_LEARNING_RATE = 10
+LOW_FIDELITY_TORQUE_VARIANCE = 1.5
 
 BASE_TRAJECTORY = "tune_fine"
 
@@ -161,15 +161,16 @@ def find_next_actions(
 
         if i >= NUM_LOW_FIDELITY_ITERATIONS - 1:
             break
+
+        if present_average_reward > 0:
+            break # We're hitting the ball, can stop here
         
-        # Ah. here's the problem. we're making many perturbations of the control vector but only gradient descenting once.
-        # I don't have the compute to make this run fast the way I want it to, so a minor change is in order.
-        worker_trajectories = []
-        for j in range(NUM_LOW_FIDELITY_TRAJECTORIES):
-            perturbed_control_vector = perturb_vector(present_control_vector, LOW_FIDELITY_TORQUE_VARIANCE, torque_constraints, -torque_constraints)
-            worker_trajectories.append(make_torque_trajectory(perturbed_control_vector, ball_flight_time))
+        # I don't have the compute to try many control vectors in parallel for the many ball positions and velocities
+        # So we're just doing one.
+        perturbed_control_vector = perturb_vector(present_control_vector, LOW_FIDELITY_TORQUE_VARIANCE, torque_constraints, -torque_constraints)
+        perturbed_trajectory = make_torque_trajectory(perturbed_control_vector, ball_flight_time)
         perturbed_rewards = []
-        results = worker_pool.starmap(worker_task, [(start_time, measured_joint_positions, measured_joint_velocities, ball_positions[j], ball_velocities[j], worker_trajectories[j], j) for j in range(NUM_LOW_FIDELITY_TRAJECTORIES)])
+        results = worker_pool.starmap(worker_task, [(start_time, measured_joint_positions, measured_joint_velocities, ball_positions[j], ball_velocities[j], perturbed_trajectory, j) for j in range(NUM_LOW_FIDELITY_TRAJECTORIES)])
         for result in results:
             perturbed_rewards.append(result)
         perturbed_average_reward = np.mean(perturbed_rewards)
@@ -214,6 +215,12 @@ def real_time_operation(
     
     What we're doing is simulating reality, but planning using a low-fidelity simulation.
     """
+
+    print(f"Pitch speed: {pitch_speed_world} mph")
+    print(f"Pitch position: {pitch_position_world}")
+    print(f"Learning rate {LOW_FIDELITY_LEARNING_RATE}")
+    print(f"Torque variance {LOW_FIDELITY_TORQUE_VARIANCE}")
+    print(f"Iterations {NUM_LOW_FIDELITY_ITERATIONS}")
 
     # Set up the 'reality' case. This is our ground truth.
     simulator_world, diagram_world = setup_simulator(
