@@ -49,7 +49,7 @@ TEST_CASES = {
         "ball_position_measurement_error": 0.01, # 1 cm
         "ball_velocity_measurement_error": 0.1, # 0.1 m/s
         "ball_position_sample_distribution": 0.012, # 1.2 cm
-        "ball_velocity_sample_distribution": 0.12   # 0.1 m/s
+        "ball_velocity_sample_distribution": 0.12   # 0.12 m/s
     },
     "high_noise": {
         "name": "High Noise",
@@ -181,12 +181,17 @@ def benchmark_pitches(robot, case):
 
 if __name__ == "__main__":
     with open(f"{PACKAGE_ROOT}/../benchmarks/iiwa14/perfect.dill", "rb") as f:
-        benchmark_results = dill.load(f)
-    start_time = time.time()
-    make_pitches("iiwa14")
-    benchmark_pitches("iiwa14", "perfect")
-    benchmark_pitches("iiwa14", "low_noise")
-    benchmark_pitches("iiwa14", "high_noise")
-    end_time = time.time()
-    print(f"Total time: {end_time-start_time}")
+        perfect_benchmark_results = dill.load(f)
+    with open(f"{PACKAGE_ROOT}/../benchmarks/iiwa14/low_noise.dill", "rb") as f:
+        low_noise_benchmark_results = dill.load(f)
+    with open(f"{PACKAGE_ROOT}/../benchmarks/iiwa14/high_noise.dill", "rb") as f:
+        high_noise_benchmark_results = dill.load(f)
+    # start_time = time.time()
+    # make_pitches("iiwa14")
+    # benchmark_pitches("iiwa14", "perfect")
+    # benchmark_pitches("iiwa14", "low_noise")
+    # benchmark_pitches("iiwa14", "high_noise")
+    # end_time = time.time()
+    # print(f"Total time: {end_time-start_time}")
+    print("beans")
 

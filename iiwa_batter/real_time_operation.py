@@ -162,6 +162,8 @@ def find_next_actions(
         if i >= NUM_LOW_FIDELITY_ITERATIONS - 1:
             break
         
+        # Ah. here's the problem. we're making many perturbations of the control vector but only gradient descenting once.
+        # I don't have the compute to make this run fast the way I want it to, so a minor change is in order.
         worker_trajectories = []
         for j in range(NUM_LOW_FIDELITY_TRAJECTORIES):
             perturbed_control_vector = perturb_vector(present_control_vector, LOW_FIDELITY_TORQUE_VARIANCE, torque_constraints, -torque_constraints)
