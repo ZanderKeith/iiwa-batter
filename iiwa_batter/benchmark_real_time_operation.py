@@ -30,7 +30,7 @@ from iiwa_batter.swing_simulator import setup_simulator, reset_systems, run_swin
 
 from iiwa_batter.real_time_operation import real_time_operation
 
-NUM_NEW_PITCHES = 20
+NUM_NEW_PITCHES = 13
 
 TEST_CASES = {
     "perfect": {
@@ -180,18 +180,18 @@ def benchmark_pitches(robot, case):
         dill.dump(benchmark_results, f)
 
 if __name__ == "__main__":
-    with open(f"{PACKAGE_ROOT}/../benchmarks/iiwa14/perfect.dill", "rb") as f:
-        perfect_benchmark_results = dill.load(f)
-    with open(f"{PACKAGE_ROOT}/../benchmarks/iiwa14/low_noise.dill", "rb") as f:
-        low_noise_benchmark_results = dill.load(f)
-    with open(f"{PACKAGE_ROOT}/../benchmarks/iiwa14/high_noise.dill", "rb") as f:
-        high_noise_benchmark_results = dill.load(f)
-    # start_time = time.time()
-    # make_pitches("iiwa14")
-    # benchmark_pitches("iiwa14", "perfect")
-    # benchmark_pitches("iiwa14", "low_noise")
-    # benchmark_pitches("iiwa14", "high_noise")
-    # end_time = time.time()
-    # print(f"Total time: {end_time-start_time}")
+    # with open(f"{PACKAGE_ROOT}/../benchmarks/iiwa14/perfect.dill", "rb") as f:
+    #     perfect_benchmark_results = dill.load(f)
+    # with open(f"{PACKAGE_ROOT}/../benchmarks/iiwa14/low_noise.dill", "rb") as f:
+    #     low_noise_benchmark_results = dill.load(f)
+    # with open(f"{PACKAGE_ROOT}/../benchmarks/iiwa14/high_noise.dill", "rb") as f:
+    #     high_noise_benchmark_results = dill.load(f)
+    start_time = time.time()
+    make_pitches("iiwa14")
+    benchmark_pitches("iiwa14", "perfect")
+    benchmark_pitches("iiwa14", "low_noise")
+    benchmark_pitches("iiwa14", "high_noise")
+    end_time = time.time()
+    print(f"Total time: {end_time-start_time}")
     print("beans")
 

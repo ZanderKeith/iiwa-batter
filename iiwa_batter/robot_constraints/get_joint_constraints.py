@@ -106,12 +106,20 @@ def scale_torque_limits(
             values["arm_extension"] / robot_constraints[target_robot]["arm_extension"]
         )
 
+        try:
+            skipped_joint = int(values["skipped_joint"])
+        except KeyError:
+            skipped_joint = None
+
         new_dict[robot] = values
         new_dict[robot]["torque"] = {}
         for joint in values["joint_range"].keys():
             new_dict[robot]["torque"][joint] = (
                 original_torque_constraints[joint] * payload_ratio * extension_ratio
             )
+            if skipped_joint is not None and int(joint) == skipped_joint:
+                new_dict[robot]["torque"][joint] = 0
+
 
     return robot_constraints
 

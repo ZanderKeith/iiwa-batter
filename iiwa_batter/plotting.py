@@ -8,7 +8,7 @@ from iiwa_batter import (
 )
 from iiwa_batter.robot_constraints.get_joint_constraints import JOINT_CONSTRAINTS
 
-BACKGROUND_COLOR = "#1F1F1F"
+BACKGROUND_COLOR = "#000000"
 TEXT_COLOR = "white"
 
 TABLE_COLUMN_FONT_SIZE = 28
@@ -33,7 +33,7 @@ def plot_joint_velocity(state_dict, robot_constraints, save_dir):
     ax.tick_params(axis='both', which='major', labelsize=14, colors=TEXT_COLOR)
     ax.legend(fontsize=14, loc="upper left")
 
-    fig.patch.set_facecolor("#1F1F1F")
+    fig.patch.set_facecolor(BACKGROUND_COLOR)
 
     fig.set_figwidth(8)
 
@@ -120,11 +120,16 @@ def compare_joint_constraints(robot):
         
         axes[i].axis("off")
 
-    fig.patch.set_facecolor("#0F0F0F")
+    fig.patch.set_facecolor(BACKGROUND_COLOR)
     fig.tight_layout()
     fig.savefig(f"{PACKAGE_ROOT}/../benchmarks/{robot}/joint_constraints.png")
     plt.close(fig)
 
+
+
+
 if __name__ == "__main__":
     compare_joint_constraints("iiwa14")
     compare_joint_constraints("kr6r900")
+    compare_joint_constraints("slugger")
+    pass
