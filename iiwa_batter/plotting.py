@@ -5,10 +5,12 @@ import matplotlib.pyplot as plt
 from iiwa_batter import (
     PACKAGE_ROOT,
     NUM_JOINTS,
+    TEST_CASES,
 )
 from iiwa_batter.robot_constraints.get_joint_constraints import JOINT_CONSTRAINTS
 
 BACKGROUND_COLOR = "#000000"
+PLOT_COLOR = "#1F1F1F"
 TEXT_COLOR = "white"
 
 TABLE_COLUMN_FONT_SIZE = 28
@@ -126,10 +128,66 @@ def compare_joint_constraints(robot):
     plt.close(fig)
 
 
+def benchmark_results(robot):
+
+    result_names = ["Fair Hits", "Foul Hits", "Strikes", "Self Collisions"]
+    test_case_names = ["No Error", "1 cm Position Error, 0.1 m/s Velocity Error", "5 cm Position Error, 0.5 m/s Velocity Error"]
+    colors = {"perfect": "blue", "low_noise": "orange", "high_noise": "magenta"}
+
+    test_cases = TEST_CASES.keys()
+    test_case_results = {}
+    for case in test_cases:
+        # This is a little cheesed because I did two runs with different pitch seeds and am combining the two after the fact
+        # Benchmarking is SLOW so I can't just rerun it (no time!)
+        with open(f"{PACKAGE_ROOT}/../benchmarks/{robot}/{case}.dill", "rb") as f:
+            case_results = dill.load(f)
+        with open(f"{PACKAGE_ROOT}/../benchmarks copy/{robot}/{case}.dill", "rb") as f:
+            case_results_1 = dill.load(f)
+
+        #total_pitches = case_results["total_pitches"] + case_results_1["total_pitches"]
+        total_hits = case_results["total_hits"] + case_results_1["total_hits"]
+        total_fouls = case_results["total_fouls"] + case_results_1["total_fouls"]
+        total_strikes = case_results["total_strikes"] + case_results_1["total_strikes"]
+        total_collisions = case_results["total_collisions"] + case_results_1["total_collisions"]
+
+        test_case_results[case] = [total_hits, total_fouls, total_strikes, total_collisions]
+
+    fig, ax = plt.subplots(1, 1, figsize=(12, 6))
+    x = np.arange(len(result_names))
+    width = 0.25
+    multiplier = 0
+
+    for case, count in test_case_results.items():
+        offset = width*multiplier
+        rects = ax.bar(x+offset, count, width, label=case, color=colors[case])
+        multiplier += 1
+
+    #ax.set_ylabel("Count", color=TEXT_COLOR, fontsize=20)
+    ax.set_title("Batting Performance vs Measurement Error", color=TEXT_COLOR, fontsize=24)
+    ax.set_xticks(x + width, result_names, color=TEXT_COLOR, fontsize=24)
+    legend = ax.legend()
+    ax.tick_params(axis='both', which='major', labelsize=20, colors=TEXT_COLOR)
+    ax.grid(axis="y")
+    ax.set_yticks(np.arange(0, 19, 2))
+    legend.get_frame().set_facecolor("#1F1F1F")
+    for i, text in enumerate(legend.get_texts()):
+        text.set_color("white")
+        text.set_fontsize(20)
+        text.set_text(test_case_names[i])
+
+
+    fig.tight_layout()
+
+    fig.patch.set_facecolor(BACKGROUND_COLOR)
+    ax.set_facecolor(PLOT_COLOR)
+
+
+    fig.savefig(f"{PACKAGE_ROOT}/../benchmarks/{robot}/results.png")
 
 
 if __name__ == "__main__":
-    compare_joint_constraints("iiwa14")
-    compare_joint_constraints("kr6r900")
-    compare_joint_constraints("slugger")
+    #compare_joint_constraints("iiwa14")
+    #compare_joint_constraints("kr6r900")
+    #compare_joint_constraints("slugger")
+    benchmark_results("iiwa14")
     pass
