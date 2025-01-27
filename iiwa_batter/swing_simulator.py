@@ -195,7 +195,7 @@ class TorqueTrajectorySystem(LeafSystem):
         # Perform rectilinear interpolation by finding the largest timestep that is less than or equal to the current time
         timestep = self.programmed_timesteps[self.programmed_timesteps <= time][-1]
         # if time in [0.0, 0.038, 0.02, 0.018000000000000002]:
-        #     output.SetFromVector(np.array([0] * NUM_JOINTS))
+        #     output.SetFromVector(np.zeros(NUM_JOINTS))
         # else:
         output.SetFromVector(self.torque_trajectory[timestep])
         #print(f"Time: {time}\nTorque: {self.torque_trajectory[timestep][0]}")
@@ -206,7 +206,7 @@ class TorqueTrajectorySystem(LeafSystem):
 
     def update_trajectory(self, torque_trajectory: dict[float, np.ndarray]):
         if len(torque_trajectory) == 0:
-            torque_trajectory = {0: np.array([0] * NUM_JOINTS)}
+            torque_trajectory = {0: np.zeros(NUM_JOINTS)}
         self.torque_trajectory = torque_trajectory
         self.programmed_timesteps = np.array(list(torque_trajectory.keys()))
 
@@ -545,7 +545,6 @@ def run_swing_simulation(
     plant: Diagram = station.GetSubsystemByName("plant")
     collision_check_system: LeafSystem = diagram.GetSubsystemByName("collision_check_system")
     simulator_context = simulator.get_context()
-    station_context = station.GetMyContextFromRoot(simulator_context)
     plant_context = plant.GetMyContextFromRoot(simulator_context)
     collision_check_system_context = collision_check_system.GetMyContextFromRoot(simulator_context)
 
@@ -616,7 +615,7 @@ def run_swing_simulation(
     if result is None:
         # Get final position of the ball
         ball_position, ball_velocity = parse_simulation_state(simulator, diagram, "ball")
-        if ball_position[0] > -0.2:
+        if ball_position[0] > -0.2 or ball_velocity[2] > 0:
             result = "hit"
         else:
             result = "miss"

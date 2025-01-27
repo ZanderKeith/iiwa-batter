@@ -54,9 +54,9 @@ def full_trajectory_reward(
     if result == "collision":
         severity = status_dict["contact_severity"]
         if severity <= 10:
-            return (-1 * severity) - 20
+            return ((-1 * severity) - 1) / 10
         else:
-            return (-10 * np.log10(severity)) - 20
+            return ((-10 * np.log10(severity)) - 1) / 10
     elif result == "miss":
         return -10 * status_dict["closest_approach"]
     elif result == "hit":
@@ -65,7 +65,7 @@ def full_trajectory_reward(
         land_location = path[-1, :2]
         distance = np.linalg.norm(land_location)
         multiplier = ball_distance_multiplier(land_location)
-        return distance * multiplier
+        return distance * multiplier * 0.01
     else:
         raise ValueError(f"Unknown result: {result}")
 
@@ -79,6 +79,7 @@ def single_full_trajectory_torque_only(
     ball_time_of_flight,
     torque_constraints,
     learning_rate=1,
+    torque_variance=1,
 ):
     """Run stochastic optimization on the control vector for a single full trajectory, only updating the torque values"""
 
@@ -93,7 +94,7 @@ def single_full_trajectory_torque_only(
         ball_time_of_flight,
     )
 
-    perturbed_control_vector = perturb_vector(present_control_vector, 1, torque_constraints, -torque_constraints)
+    perturbed_control_vector = perturb_vector(present_control_vector, torque_variance, torque_constraints, -torque_constraints)
     perturbed_reward = full_trajectory_reward(
         simulator,
         diagram,
@@ -127,6 +128,8 @@ def single_full_trajectory_torque_and_position(
     position_constraints_lower,
     torque_constraints,
     learning_rate=1,
+    position_variance=1,
+    torque_variance=1,
 ):
     """Run stochastic optimization on the control vector for a single full trajectory, updating both the torque and position values"""
 
@@ -142,8 +145,8 @@ def single_full_trajectory_torque_and_position(
         ball_time_of_flight,
     )
 
-    perturbed_initial_position = perturb_vector(present_initial_position, np.deg2rad(1), position_constraints_upper, position_constraints_lower)
-    perturbed_control_vector = perturb_vector(present_control_vector, 1, torque_constraints, -torque_constraints)
+    perturbed_initial_position = perturb_vector(present_initial_position, position_variance, position_constraints_upper, position_constraints_lower)
+    perturbed_control_vector = perturb_vector(present_control_vector, torque_variance, torque_constraints, -torque_constraints)
     perturbed_reward = full_trajectory_reward(
         simulator,
         diagram,

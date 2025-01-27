@@ -50,9 +50,8 @@ class BallKeyframer(bpy.types.Operator):
             active_object.location = pose[1]
             active_object.keyframe_insert(data_path="location", frame=frame)
 
-        # Return to object mode
         bpy.ops.object.mode_set(mode='OBJECT')
-        self.report({'INFO'}, f"Applied {len(trajectory)} keyframes")
+        self.report({'INFO'}, f"Applied {len(trajectory)} keyframes to {active_object.name}")
         return {'FINISHED'}
 
 

@@ -110,7 +110,9 @@ def run_naive_full_trajectory_optimization_hot_start(
     simulation_dt=PITCH_DT,
     iterations=10,
     debug_prints=False,
-    learning_rate=1
+    learning_rate=1,
+    position_variance=np.deg2rad(1),
+    torque_variance=1,
 ):
 
     start_time = time.time()
@@ -139,7 +141,9 @@ def run_naive_full_trajectory_optimization_hot_start(
             position_constraints_upper=position_constraints_upper,
             position_constraints_lower=position_constraints_lower,
             torque_constraints=torque_constraints,
-            learning_rate=learning_rate
+            learning_rate=learning_rate,
+            position_variance=position_variance,
+            torque_variance=torque_variance,
         )
 
         if present_reward > best_reward:
@@ -185,12 +189,12 @@ def run_naive_full_trajectory_optimization_hot_start_torque_only(
     simulation_dt=PITCH_DT,
     iterations=10,
     debug_prints=False,
-    learning_rate=1
+    learning_rate=1,
+    torque_variance=1,
 ):
 
     start_time = time.time()
 
-    np.random.seed(0)
     robot_constraints = JOINT_CONSTRAINTS[robot]
     torque_constraints = np.array([int(torque) for torque in robot_constraints["torque"].values()])
 
@@ -208,7 +212,8 @@ def run_naive_full_trajectory_optimization_hot_start_torque_only(
             ball_initial_velocity=ball_initial_velocity,
             ball_time_of_flight=ball_time_of_flight,
             torque_constraints=torque_constraints,
-            learning_rate=learning_rate
+            learning_rate=learning_rate,
+            torque_variance=torque_variance,
         )
 
         if present_reward > best_reward:

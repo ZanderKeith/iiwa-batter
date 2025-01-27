@@ -33,6 +33,7 @@ def partial_trajectory_reward(
     initial_ball_position,
     initial_ball_velocity,
     torque_trajectory,
+    meshcat=None,
 ):
     reset_systems(diagram, torque_trajectory)
     status_dict = run_swing_simulation(
@@ -44,23 +45,24 @@ def partial_trajectory_reward(
         initial_joint_velocities=initial_joint_velocities,
         initial_ball_position=initial_ball_position,
         initial_ball_velocity=initial_ball_velocity,
+        meshcat=meshcat
     )
 
     result = status_dict["result"]
     if result == "collision":
         severity = status_dict["contact_severity"]
         if severity <= 10:
-            return (-1 * severity) - 20
+            return ((-1 * severity) - 1) / 10
         else:
-            return (-10 * np.log10(severity)) - 20
+            return ((-10 * np.log10(severity)) - 1) / 10
     elif result == "miss":
-        return -10 * status_dict["closest_approach"]
+        return -1 * status_dict["closest_approach"]
     elif result == "hit":
         ball_position, ball_velocity = parse_simulation_state(simulator, diagram, "ball")
         path = ball_flight_path(ball_position, ball_velocity)
         land_location = path[-1, :2]
         distance = np.linalg.norm(land_location)
         multiplier = ball_distance_multiplier(land_location)
-        return distance * multiplier
+        return distance * multiplier * 0.01 # Keep the reward in a reasonable range
     else:
         raise ValueError(f"Unknown result: {result}")
